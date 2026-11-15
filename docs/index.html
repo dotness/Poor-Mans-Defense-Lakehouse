@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <title>Poor Man's Defense Lakehouse — Interactive Architecture Command Center</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="brand-group">
+      <span class="brand-badge">ARTEMIS.IA v0.1.0 / GW v0.2.0</span>
+      <div>
+        <div class="brand-title">Poor Man's Defense Lakehouse — System Architecture Explorer</div>
+        <div class="brand-subtitle">Sovereign Zero-JVM Lakehouse, 8-Domain Hexagonal Core &amp; Universal Knowledge Discovery Graph</div>
+      </div>
+    </div>
+    <nav class="nav-links" aria-label="Primary Navigation">
+      <a href="index.html" class="nav-link active">1. System &amp; Domain Explorer</a>
+      <a href="interactive/deployment_topology.html" class="nav-link">2. Deployment Diagram &amp; Specs</a>
+      <a href="interactive/system_flows.html" class="nav-link">3. Interactive Flow Simulator</a>
+      <a href="interactive/knowledge_discovery_explorer.html" class="nav-link">4. KDG &amp; Zero-Trust Sandbox</a>
+      <a href="README.html" class="nav-link" id="docs-hub-link">Markdown Guides</a>
+    </nav>
+  </header>
+
+  <section class="hero-strip">
+    <div class="hero-text">
+      <h1>Sovereign Big Data &amp; AI Infostructure on a Single Linux VM</h1>
+      <p>Click any infrastructure node, hexagonal domain facade, or deployment container below to inspect its C/C++/Go runtime footprint, Docker Compose topology, volume mounts, port mappings, and live dependency paths.</p>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-pill">
+        <span class="kpi-label">Idle RAM Footprint</span>
+        <span class="kpi-value emerald">2.85 GB / 12 GB</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Deployment Units</span>
+        <span class="kpi-value">8 Containers + Host</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Core Domains</span>
+        <span class="kpi-value">8 Domains</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">REST API Surface</span>
+        <span class="kpi-value purple">34 Endpoints</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">AI Agent Tools</span>
+        <span class="kpi-value amber">6 Read-Only Tools</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Offline Test Suite</span>
+        <span class="kpi-value emerald">162 / 162 Passing</span>
+      </div>
+    </div>
+  </section>
+
+  <main class="workspace-container">
+    <div class="tab-bar" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="tab-topology">Interactive Topology &amp; 8-Domain Inspector</button>
+      <button type="button" class="tab-btn" data-tab="tab-ram">Zero-JVM RAM Budget Calculator</button>
+      <button type="button" class="tab-btn" data-tab="tab-api">34 REST Endpoints &amp; CLI Explorer</button>
+      <button type="button" class="tab-btn" data-tab="tab-docs">Architecture Documentation Index</button>
+    </div>
+
+    <!-- TAB 1: Interactive Topology & Component Inspector -->
+    <section id="tab-topology" class="tab-panel">
+      <div class="split-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>Interactive Architecture Matrix</span>
+              <span class="badge badge-blue">22 Clickable Nodes</span>
+            </div>
+            <div class="player-controls">
+              <button type="button" class="btn" id="filter-all">All Layers</button>
+              <button type="button" class="btn" id="filter-domains">8 Domains</button>
+              <button type="button" class="btn" id="filter-infra">Zero-JVM Infra</button>
+            </div>
+          </div>
+
+          <div class="visual-stage" id="topology-svg-stage">
+            <svg id="topology-svg" class="flow-svg" viewBox="0 0 860 250" aria-label="Interactive Dependency Graph"></svg>
+          </div>
+
+          <div id="architecture-layers-container"></div>
+        </div>
+
+        <aside class="panel" id="component-inspector">
+          <div class="panel-header">
+            <div class="panel-title" id="inspector-title">Select a Component</div>
+            <span class="badge badge-emerald" id="inspector-badge">READY</span>
+          </div>
+          <div id="inspector-body"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TAB 2: Zero-JVM RAM Budget Simulator -->
+    <section id="tab-ram" class="tab-panel" hidden>
+      <div class="split-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>Interactive VM Memory &amp; Workload Simulator</span>
+              <span class="badge badge-emerald">Zero-JVM Advantage</span>
+            </div>
+            <div class="player-controls">
+              <label for="vm-size-select" class="kpi-label">Target Host VM RAM:</label>
+              <select id="vm-size-select" class="select-field">
+                <option value="16384">16 GB RAM (Standard Edge VM)</option>
+                <option value="24576">24 GB RAM (Mid-Tier VM)</option>
+                <option value="32768" selected>32 GB RAM (Recommended Sovereign VM)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="inspector-text">
+            Toggle active workloads below to compare how <strong>Poor Man's Defense Lakehouse</strong> (native C/C++/Go/Python + cloud LLM offload) stays comfortably within single-VM constraints while the equivalent <strong>Traditional JVM Stack</strong> triggers immediate Out-Of-Memory (OOM) kernel kills.
+          </div>
+
+          <div class="inspector-section">
+            <div class="inspector-label">Simulate Concurrent Operational Workloads</div>
+            <div class="player-controls" id="workload-toggles"></div>
+          </div>
+
+          <div class="inspector-section">
+            <div class="inspector-label">Artemis.IA Native Stack Memory Utilization</div>
+            <div class="ram-meter">
+              <div class="ram-bar-track">
+                <div id="artemis-ram-bar" class="ram-bar-fill"></div>
+              </div>
+            </div>
+            <div id="artemis-ram-summary" class="arch-node-meta"></div>
+          </div>
+
+          <div class="inspector-section">
+            <div class="inspector-label">Traditional JVM Stack Memory Utilization (Kafka + Spark + HDFS + Neo4j + OpenCTI + Local LLM)</div>
+            <div class="ram-meter">
+              <div class="ram-bar-track">
+                <div id="jvm-ram-bar" class="ram-bar-fill"></div>
+              </div>
+            </div>
+            <div id="jvm-ram-summary" class="arch-node-meta"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Component-by-Component RAM Breakdown</div>
+            <span class="badge badge-blue">C / C++ / Go vs JVM</span>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table" id="ram-comparison-table">
+              <thead>
+                <tr>
+                  <th>Capability Tier</th>
+                  <th>Artemis Native Tool</th>
+                  <th>Artemis RAM</th>
+                  <th>Replaced Heavy Tool</th>
+                  <th>JVM / Local RAM</th>
+                </tr>
+              </thead>
+              <tbody id="ram-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: 34 REST API Endpoints & CLI Reference -->
+    <section id="tab-api" class="tab-panel" hidden>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Unified Gateway REST API (34 Endpoints) &amp; CLI Command Catalog</span>
+            <span class="badge badge-purple">FastAPI v0.2.0 + Click CLI</span>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <input type="text" id="api-search-input" class="input-field" placeholder="Search by path, domain, CLI command, or contract (e.g. discovery, lineage, pipeline, ask)...">
+          <select id="api-domain-filter" class="select-field">
+            <option value="ALL">All 8 Domains + System (34 Routes)</option>
+            <option value="System">System (1)</option>
+            <option value="auth">1. auth (1)</option>
+            <option value="ingestion">2. ingestion (2)</option>
+            <option value="analytics">3. analytics (1)</option>
+            <option value="graph">4. graph (4)</option>
+            <option value="ai">5. ai (1)</option>
+            <option value="pipeline">6. pipeline (8)</option>
+            <option value="project">7. project (11)</option>
+            <option value="discovery">8. discovery / KDG (5)</option>
+          </select>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>HTTP Method &amp; Path</th>
+                <th>CLI Equivalent</th>
+                <th>Auth / Guardrail</th>
+                <th>Contract / Description</th>
+              </tr>
+            </thead>
+            <tbody id="api-catalog-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Markdown Architecture Documentation Index -->
+    <section id="tab-docs" class="tab-panel" hidden>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Architecture &amp; Deep-Dive Documentation Suite (docs/)</span>
+            <span class="badge badge-blue">Features 001 – 006</span>
+          </div>
+        </div>
+        <div class="node-grid" id="markdown-docs-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>Poor Man's Defense Lakehouse — Sovereign Big Data Lakehouse &amp; AI Infostructure (Version 0.1.0 / Gateway 0.2.0)</div>
+    <div>Strict CSP Enabled • Zero External CDNs • Zero JVM Overhead</div>
+  </footer>
+
+  <script src="assets/architecture_explorer.js"></script>
+</body>
+</html>

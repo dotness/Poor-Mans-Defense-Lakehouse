@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <title>Poor Man's Defense Lakehouse — Interactive End-to-End Flow Simulator</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="brand-group">
+      <span class="brand-badge">FLOW SIMULATOR</span>
+      <div>
+        <div class="brand-title">Poor Man's Defense Lakehouse — Interactive End-to-End Flow Simulator</div>
+        <div class="brand-subtitle">Step-by-Step Packet Animation, Multi-Database Sequence Diagrams &amp; Payload Inspector</div>
+      </div>
+    </div>
+    <nav class="nav-links" aria-label="Primary Navigation">
+      <a href="../index.html" class="nav-link">1. System &amp; Domain Explorer</a>
+      <a href="deployment_topology.html" class="nav-link">2. Deployment Diagram &amp; Specs</a>
+      <a href="system_flows.html" class="nav-link active">3. Interactive Flow Simulator</a>
+      <a href="knowledge_discovery_explorer.html" class="nav-link">4. KDG &amp; Zero-Trust Sandbox</a>
+    </nav>
+  </header>
+
+  <section class="hero-strip">
+    <div class="hero-text">
+      <h1>Interactive Execution Flow &amp; Sequence Player</h1>
+      <p>Select any of the 5 core architectural scenarios below, then step through each phase or press <strong>Auto-Play</strong> to inspect live packet transitions, source code invocations, SQL/Cypher queries, and JSON contract payloads.</p>
+    </div>
+    <div class="player-controls">
+      <button type="button" class="btn" id="btn-prev-step">&#9664; Prev Step</button>
+      <button type="button" class="btn btn-primary" id="btn-play-pause">&#9654; Auto-Play Flow</button>
+      <button type="button" class="btn" id="btn-next-step">Next Step &#9654;</button>
+      <button type="button" class="btn" id="btn-reset-flow">&#8634; Reset</button>
+    </div>
+  </section>
+
+  <main class="workspace-container">
+    <div class="tab-bar" id="scenario-tab-bar" role="tablist"></div>
+
+    <div class="split-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="flow-stage-title">Scenario Stage</div>
+          <span class="badge badge-blue" id="flow-step-counter">Step 1 / 6</span>
+        </div>
+
+        <div class="visual-stage">
+          <svg id="flow-sequence-svg" class="flow-svg" viewBox="0 0 880 310" aria-label="Animated Sequence Diagram"></svg>
+        </div>
+
+        <div class="step-timeline" id="flow-steps-list"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="step-detail-title">Step Telemetry &amp; Payload Inspector</div>
+          <span class="badge badge-emerald" id="step-detail-badge">ACTIVE STEP</span>
+        </div>
+        <div id="step-detail-body"></div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div>Poor Man's Defense Lakehouse — Interactive Flow Simulator (Features 001 – 006)</div>
+    <div>Strict CSP Enabled • Zero External CDNs • Safe DOM Construction</div>
+  </footer>
+
+  <script src="../assets/system_flows.js"></script>
+</body>
+</html>

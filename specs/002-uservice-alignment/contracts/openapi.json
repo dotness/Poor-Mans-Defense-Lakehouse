@@ -1,0 +1,182 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Artemis Domain API Gateway",
+    "version": "0.2.0",
+    "description": "RESTful API surface for Artemis domains aligned with uservice-template"
+  },
+  "paths": {
+    "/api/v1/auth/token": {
+      "post": {
+        "summary": "Authenticate user and issue JWT Bearer token",
+        "operationId": "login_for_access_token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT Token response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/query": {
+      "post": {
+        "summary": "Execute analytical SQL query via AnalyticsFacade",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query results envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/ask": {
+      "post": {
+        "summary": "Ask natural language question via AIFacade and Google AI Studio",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Grounded AI synthesis response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIQueryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/flush": {
+      "post": {
+        "summary": "Trigger buffer flush to MinIO Parquet via IngestionFacade and Temporal workflow",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Flush execution status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchFlushResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "example": "Bearer" },
+          "expires_in": { "type": "integer", "example": 86400 }
+        },
+        "required": ["access_token", "token_type"]
+      },
+      "QueryRequest": {
+        "type": "object",
+        "properties": {
+          "sql": { "type": "string" },
+          "format": { "type": "string", "enum": ["table", "json", "csv"], "default": "table" }
+        },
+        "required": ["sql"]
+      },
+      "QueryResult": {
+        "type": "object",
+        "properties": {
+          "columns": { "type": "array", "items": { "type": "string" } },
+          "rows": { "type": "array", "items": { "type": "array" } },
+          "row_count": { "type": "integer" },
+          "duration_ms": { "type": "integer" }
+        },
+        "required": ["columns", "rows", "row_count", "duration_ms"]
+      },
+      "AIQueryRequest": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string" }
+        },
+        "required": ["prompt"]
+      },
+      "AIQueryResponse": {
+        "type": "object",
+        "properties": {
+          "query_id": { "type": "string" },
+          "response": { "type": "string" },
+          "model_used": { "type": "string" },
+          "cached": { "type": "boolean" },
+          "duration_ms": { "type": "integer" }
+        },
+        "required": ["query_id", "response", "model_used", "cached", "duration_ms"]
+      },
+      "BatchFlushResult": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "events_processed": { "type": "integer" },
+          "object_key": { "type": "string", "nullable": true }
+        },
+        "required": ["status", "events_processed"]
+      }
+    }
+  }
+}

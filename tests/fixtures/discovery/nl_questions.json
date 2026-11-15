@@ -1,0 +1,162 @@
+[
+  {
+    "id": "q01",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference account ACCT-99812?",
+    "expected_contains": ["proj-alpha", "proj-beta"],
+    "expected_not_contains": []
+  },
+  {
+    "id": "q02",
+    "type": "entity",
+    "user": "bob",
+    "question": "Which projects reference account ACCT-99812?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q03",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference customer CUST-7711?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q04",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference subject SUBJ-001?",
+    "expected_contains": ["proj-beta"],
+    "expected_not_contains": ["proj-alpha"]
+  },
+  {
+    "id": "q05",
+    "type": "entity",
+    "user": "bob",
+    "question": "Which projects reference subject SUBJ-001?",
+    "expected_contains": ["No accessible projects"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q06",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference account ACCT-99813?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q07",
+    "type": "entity",
+    "user": "bob",
+    "question": "Which projects reference account ACCT-99814?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q08",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference account ACCT-99815?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q09",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference customer CUST-7712?",
+    "expected_contains": ["proj-alpha"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q10",
+    "type": "entity",
+    "user": "alice",
+    "question": "Where does email subj1@clinical.org appear across projects?",
+    "expected_contains": ["proj-beta"],
+    "expected_not_contains": ["proj-alpha"]
+  },
+  {
+    "id": "q11",
+    "type": "entity",
+    "user": "bob",
+    "question": "Where does email subj1@clinical.org appear across projects?",
+    "expected_contains": ["No accessible projects"],
+    "expected_not_contains": ["proj-beta"]
+  },
+  {
+    "id": "q12",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference IP 192.168.1.10?",
+    "expected_contains": ["proj-beta"],
+    "expected_not_contains": ["proj-alpha"]
+  },
+  {
+    "id": "q13",
+    "type": "entity",
+    "user": "alice",
+    "question": "Which projects reference account ACCT-NONEXISTENT?",
+    "expected_contains": ["No accessible projects"],
+    "expected_not_contains": []
+  },
+  {
+    "id": "q14",
+    "type": "schema",
+    "user": "alice",
+    "question": "What datasets and columns does project proj-alpha contain?",
+    "expected_contains": ["proj-alpha", "datasets"],
+    "expected_not_contains": ["not found or access denied"]
+  },
+  {
+    "id": "q15",
+    "type": "schema",
+    "user": "alice",
+    "question": "What datasets and columns does project proj-beta contain?",
+    "expected_contains": ["proj-beta", "datasets"],
+    "expected_not_contains": ["not found or access denied"]
+  },
+  {
+    "id": "q16",
+    "type": "schema",
+    "user": "bob",
+    "question": "What datasets and columns does project proj-beta contain?",
+    "expected_contains": ["not found or access denied"],
+    "expected_not_contains": ["patients"]
+  },
+  {
+    "id": "q17",
+    "type": "lineage",
+    "user": "alice",
+    "question": "What is the origin of dataset gold_kpi in project proj-alpha?",
+    "expected_contains": ["gold_kpi", "bronze_events"],
+    "expected_not_contains": []
+  },
+  {
+    "id": "q18",
+    "type": "lineage",
+    "user": "alice",
+    "question": "What is the lineage of dataset bronze_events in project proj-alpha?",
+    "expected_contains": ["bronze_events", "root dataset"],
+    "expected_not_contains": []
+  },
+  {
+    "id": "q19",
+    "type": "lineage",
+    "user": "alice",
+    "question": "What is the origin of dataset silver_vitals in project proj-beta?",
+    "expected_contains": ["silver_vitals", "root dataset"],
+    "expected_not_contains": []
+  },
+  {
+    "id": "q20",
+    "type": "lineage",
+    "user": "bob",
+    "question": "What is the origin of dataset silver_vitals in project proj-beta?",
+    "expected_contains": ["not found or access denied"],
+    "expected_not_contains": ["derived from"]
+  }
+]

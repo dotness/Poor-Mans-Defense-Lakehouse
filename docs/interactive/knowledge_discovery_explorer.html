@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <title>Poor Man's Defense Lakehouse — Interactive KDG &amp; Zero-Trust Sandbox</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="brand-group">
+      <span class="brand-badge">KDG SANDBOX</span>
+      <div>
+        <div class="brand-title">Universal Knowledge Discovery Graph &amp; Zero-Trust Confinement Sandbox</div>
+        <div class="brand-subtitle">Interactive Multi-Project Ontology, Cross-Project Entity Resolution, Lineage &amp; Regex Pattern Profiler</div>
+      </div>
+    </div>
+    <nav class="nav-links" aria-label="Primary Navigation">
+      <a href="../index.html" class="nav-link">1. System &amp; Domain Explorer</a>
+      <a href="deployment_topology.html" class="nav-link">2. Deployment Diagram &amp; Specs</a>
+      <a href="system_flows.html" class="nav-link">3. Interactive Flow Simulator</a>
+      <a href="knowledge_discovery_explorer.html" class="nav-link active">4. KDG &amp; Zero-Trust Sandbox</a>
+    </nav>
+  </header>
+
+  <section class="hero-strip">
+    <div class="hero-text">
+      <h1>Interactive Zero-Trust KDG Explorer (Feature 005)</h1>
+      <p>Switch active user identities below to observe how <strong>DiscoveryFacade</strong> and <strong>KDGGraphStore</strong> parameterize Memgraph Cypher queries (<code>w.project_id IN $member_projects</code>) so non-member workspaces leave <strong>0% trace</strong>.</p>
+    </div>
+    <div class="player-controls">
+      <label for="caller-identity-select" class="kpi-label">Active Caller Identity (RBAC):</label>
+      <select id="caller-identity-select" class="select-field">
+        <option value="alice" selected>alice — Member of [proj-alpha, proj-beta]</option>
+        <option value="bob">bob — Member of [proj-alpha] only</option>
+        <option value="eve">eve — Unauthorized (Member of [] — 0 projects)</option>
+        <option value="admin">admin — Global System Admin ([proj-alpha, proj-beta, proj-classified])</option>
+      </select>
+    </div>
+  </section>
+
+  <main class="workspace-container">
+    <div class="split-grid">
+      <!-- Left: Interactive KDG Ontology Graph Stage -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Live Memgraph KDG Ontology View</span>
+            <span class="badge badge-emerald" id="kdg-visible-badge">2 Workspaces Visible</span>
+          </div>
+          <div class="player-controls">
+            <button type="button" class="btn" id="view-mode-ontology">Ontology &amp; SAME_AS Links</button>
+            <button type="button" class="btn" id="view-mode-lineage">Medallion Lineage DAG</button>
+          </div>
+        </div>
+
+        <div class="visual-stage">
+          <svg id="kdg-graph-svg" class="flow-svg" style="height: 410px;" viewBox="0 0 880 410" aria-label="Knowledge Discovery Graph"></svg>
+        </div>
+
+        <div class="inspector-section">
+          <div class="inspector-label">Selected KDG Node / Edge Details</div>
+          <div id="kdg-selected-node-info" class="code-block">Click any node in the KDG graph above to inspect its Memgraph labels, properties, and project confinement tag.</div>
+        </div>
+      </div>
+
+      <!-- Right: Cross-Project Entity Search & Pattern Profiler -->
+      <aside class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Cross-Project Entity Correlation Simulator</div>
+          <span class="badge badge-purple">Rapidfuzz + DSU</span>
+        </div>
+
+        <div class="filter-bar">
+          <select id="entity-query-select" class="select-field">
+            <option value="ACCT-99812">Search Entity: ACCT-99812 (Exact &amp; Fuzzy Cluster)</option>
+            <option value="198.51.100.24">Search Entity: 198.51.100.24 (IP_ADDRESS)</option>
+            <option value="dr.smith@med-alpha.org">Search Entity: dr.smith@med-alpha.org (EMAIL)</option>
+          </select>
+          <button type="button" class="btn btn-primary" id="btn-run-entity-search">Run Discovery</button>
+        </div>
+
+        <div class="inspector-label">CLI Command Executed</div>
+        <div id="kdg-cli-preview" class="code-block"></div>
+
+        <div class="inspector-section">
+          <div class="inspector-label">Scoped Correlation Results (0% Non-Member Leakage)</div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Resource (Tier)</th>
+                  <th>Attribute</th>
+                  <th>Matched Value</th>
+                  <th>Method (Conf)</th>
+                </tr>
+              </thead>
+              <tbody id="kdg-search-results-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <div class="panel-header" style="margin-bottom: 0.6rem; padding-bottom: 0.4rem;">
+            <div class="panel-title" style="font-size: 0.9rem;">Interactive Phase 1 PatternProfiler Tester</div>
+            <span class="badge badge-blue">9 Regex Classifiers</span>
+          </div>
+          <div class="filter-bar" style="margin-bottom: 0.5rem;">
+            <input type="text" id="pattern-test-input" class="input-field" value="550e8400-e29b-41d4-a716-446655440000" placeholder="Enter any sample value (UUID, IP, Email, ISO date, URL, Hash, Coordinates)...">
+          </div>
+          <div id="pattern-test-output" class="code-block"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div>Poor Man's Defense Lakehouse — Interactive KDG &amp; Zero-Trust Confinement Explorer (Feature 005)</div>
+    <div>Strict CSP Enabled • Zero External CDNs • Safe DOM Construction</div>
+  </footer>
+
+  <script src="../assets/kdg_explorer.js"></script>
+</body>
+</html>

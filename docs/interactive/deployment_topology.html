@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <title>Poor Man's Defense Lakehouse — Deployment Architecture &amp; Container Specifications</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="brand-group">
+      <span class="brand-badge">DEPLOYMENT TOPOLOGY</span>
+      <div>
+        <div class="brand-title">Sovereign Single-VM, Container &amp; Air-Gapped Sandbox Deployment</div>
+        <div class="brand-subtitle">Docker Bridge Network (artemis-net), Host Python/C++ Runtime, Persistent Volumes &amp; Detailed Component Specs</div>
+      </div>
+    </div>
+    <nav class="nav-links" aria-label="Primary Navigation">
+      <a href="../index.html" class="nav-link">1. System &amp; Domain Explorer</a>
+      <a href="deployment_topology.html" class="nav-link active">2. Deployment Diagram &amp; Specs</a>
+      <a href="system_flows.html" class="nav-link">3. Interactive Flow Simulator</a>
+      <a href="knowledge_discovery_explorer.html" class="nav-link">4. KDG &amp; Zero-Trust Sandbox</a>
+    </nav>
+  </header>
+
+  <section class="hero-strip">
+    <div class="hero-text">
+      <h1>Physical Host, Docker Bridge &amp; Air-Gapped Sandbox Architecture</h1>
+      <p>Explore how all <strong>14 deployment units</strong> are orchestrated across <strong>4 isolation zones</strong> on a single Linux VM: External/Cloud Ingress, Host Native Process Space (FastAPI + Embedded DuckDB + POSIX Disk Buffer), Docker Bridge Network (<code>artemis-net</code> — 8 containers), and the Air-Gapped Medallion Pipeline Runner (<code>network_mode=&quot;none&quot;</code>).</p>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-pill">
+        <span class="kpi-label">Compose Services</span>
+        <span class="kpi-value emerald">8 Containers</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Bridge Network</span>
+        <span class="kpi-value">artemis-net</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Ephemeral Sandbox</span>
+        <span class="kpi-value amber">network=none / 2GB</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Storage Volumes</span>
+        <span class="kpi-value purple">6 Named + 2 Host</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-label">Mapped Host Ports</span>
+        <span class="kpi-value">11 TCP Ports</span>
+      </div>
+    </div>
+  </section>
+
+  <main class="workspace-container">
+    <!-- Interactive Diagram + Inspector Split View -->
+    <div class="split-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Interactive 4-Zone Deployment Diagram</span>
+            <span class="badge badge-blue">Click Any Node to Inspect</span>
+          </div>
+          <div class="player-controls">
+            <button type="button" class="btn btn-primary" id="deploy-zone-all">All Zones (14)</button>
+            <button type="button" class="btn" id="deploy-zone-docker">artemis-net (8)</button>
+            <button type="button" class="btn" id="deploy-zone-host">Host Native (3)</button>
+            <button type="button" class="btn" id="deploy-zone-sandbox">Air-Gapped Sandbox (1)</button>
+            <button type="button" class="btn" id="deploy-zone-external">External &amp; Cloud (2)</button>
+          </div>
+        </div>
+
+        <div class="visual-stage">
+          <svg id="deployment-svg" class="deployment-svg" viewBox="0 0 980 620" aria-label="Interactive Deployment Architecture Diagram"></svg>
+        </div>
+
+        <div class="deployment-legend">
+          <div class="legend-item"><span class="legend-swatch swatch-blue"></span><span>Zone 1: External Clients, Edge MQTT &amp; Cloud LLM</span></div>
+          <div class="legend-item"><span class="legend-swatch swatch-purple"></span><span>Zone 2: Host VM Native Runtime (FastAPI, DuckDB C++, Disk Buffer)</span></div>
+          <div class="legend-item"><span class="legend-swatch swatch-emerald"></span><span>Zone 3: Docker Bridge Network (<code>artemis-net</code> — 8 Containers)</span></div>
+          <div class="legend-item"><span class="legend-swatch swatch-amber"></span><span>Zone 4: Air-Gapped Ephemeral Sandbox (<code>network_mode=&quot;none&quot;</code>)</span></div>
+          <div class="legend-item"><span class="legend-swatch swatch-rose"></span><span>Active Selection &amp; Live Protocol / Port Links</span></div>
+        </div>
+      </div>
+
+      <aside class="panel" id="deployment-inspector">
+        <div class="panel-header">
+          <div class="panel-title" id="deploy-inspector-title">Deployment Unit Inspector</div>
+          <span class="badge badge-emerald" id="deploy-inspector-badge">CONTAINER SPEC</span>
+        </div>
+        <div id="deploy-inspector-body"></div>
+      </aside>
+    </div>
+
+    <!-- Detailed Component Specifications Grid (All 14 Deployment Components) -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>Detailed Component-by-Component Deployment Specifications</span>
+          <span class="badge badge-purple">14 Deployment Units • Ports, Volumes, Env &amp; Hardening</span>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="deploy-search-input" class="input-field" placeholder="Filter components by container name, image, port (e.g. 5433, 7687, 9000), volume, or env var...">
+        <select id="deploy-zone-select" class="select-field">
+          <option value="ALL">All 4 Deployment Zones (14 Components)</option>
+          <option value="docker-net">Zone 3: Docker Bridge Network — artemis-net (8 Containers)</option>
+          <option value="host-native">Zone 2: Host VM Native Process Space (3 Units)</option>
+          <option value="airgap-sandbox">Zone 4: Air-Gapped Ephemeral Docker Sandbox (1 Unit)</option>
+          <option value="external-edge">Zone 1: External Clients, Edge Feeds &amp; Cloud API (2 Units)</option>
+        </select>
+      </div>
+
+      <div id="deployment-cards-container" class="deploy-cards-grid"></div>
+    </div>
+
+    <!-- Complete Port Mapping, Volume Mount & Isolation Reference Table -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>Complete Port Mapping, Persistent Volume &amp; Security Boundary Matrix</span>
+          <span class="badge badge-emerald">docker-compose.yml + Host Runtime</span>
+        </div>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Deployment Unit</th>
+              <th>Container / Process</th>
+              <th>Image / Runtime</th>
+              <th>Host &rarr; Container Ports</th>
+              <th>Network Plane</th>
+              <th>Volumes &amp; Bind Mounts</th>
+              <th>Idle / Peak RAM</th>
+              <th>Security &amp; Isolation Posture</th>
+            </tr>
+          </thead>
+          <tbody id="deployment-matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div>Poor Man's Defense Lakehouse — Deployment Architecture &amp; Container Specifications (docker-compose.yml + Host Runtime)</div>
+    <div>Strict CSP Enabled • Zero External CDNs • Safe DOM Construction</div>
+  </footer>
+
+  <script src="../assets/deployment_topology.js"></script>
+</body>
+</html>
+

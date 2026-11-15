@@ -1,0 +1,4 @@
+Patient record audit for clinical trial phase 2.
+Subject identifier ACCT-99812 was evaluated at St. Jude Hospital by Dr. Robert Miller in Zurich.
+The laboratory results indicate elevated glucose levels following treatment protocol TP-884.
+Follow-up consultation scheduled with Dr. Elena Rostova at Geneva Research Center.

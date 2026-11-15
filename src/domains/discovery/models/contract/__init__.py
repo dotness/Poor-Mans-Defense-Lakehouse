@@ -1,0 +1,1 @@
+"""Discovery contract models."""

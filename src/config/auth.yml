@@ -1,0 +1,14 @@
+http:
+  middlewares:
+    artemis-auth:
+      basicAuth:
+        # Default user: analyst / artemis_analyst_password
+        users:
+          - "analyst:$$apr1$$QJ3wLqS3$$E5D24.U5D4xWp3o8K827v0"
+
+    artemis-headers:
+      headers:
+        sslRedirect: false
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: false
