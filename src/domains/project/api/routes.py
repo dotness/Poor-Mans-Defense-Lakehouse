@@ -87,6 +87,9 @@ async def ingest_tabular_data(
             data_bytes=contents,
             filename=payload.filename or f"{payload.dataset_name}.csv",
             tier=payload.tier,
+            ttl_expression=payload.ttl_expression,
+            timestamp_column=payload.timestamp_column,
+            overwrite=payload.overwrite,
         )
     except Exception as e:
         logger.error(f"Error ingesting tabular data: {e}")
@@ -110,6 +113,9 @@ async def ingest_graph_data(
             project_id=project_id,
             nodes=nodes_dict,
             edges=edges_dict,
+            dataset_name=payload.dataset_name,
+            ttl_expression=payload.ttl_expression,
+            overwrite=payload.overwrite,
         )
     except Exception as e:
         logger.error(f"Error ingesting graph data: {e}")
@@ -130,6 +136,9 @@ from pydantic import BaseModel
 
 class ProjectQueryRequestContract(BaseModel):
     sql: str
+    cache_ttl: Optional[str] = None
+    export_dataset: Optional[str] = None
+    export_ttl: Optional[str] = None
 
 
 @router.post("/{project_id}/query")
@@ -142,9 +151,17 @@ async def execute_project_query(project_id: str, payload: ProjectQueryRequestCon
     from src.domains.analytics.operations.project_query import ProjectQueryExecutor
     executor = ProjectQueryExecutor()
     try:
-        return executor.execute_scoped_query(project_id, payload.sql)
+        return executor.execute_scoped_query(
+            project_id,
+            payload.sql,
+            cache_ttl=payload.cache_ttl,
+            export_dataset=payload.export_dataset,
+            export_ttl=payload.export_ttl,
+        )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        if "Access Denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error querying project {project_id}: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

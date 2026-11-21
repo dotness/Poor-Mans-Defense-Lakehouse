@@ -194,6 +194,11 @@ class AgentTools:
                 asyncio.to_thread(self.graph_facade.client.execute_query, validated_cypher),
                 timeout=TOOL_TIMEOUT_SECONDS,
             )
+            try:
+                from src.domains.retention.operations.query_interceptor import QueryTTLInterceptor
+                raw_results = QueryTTLInterceptor().filter_graph_records(raw_results)
+            except Exception:
+                pass
 
             elapsed_ms = int((time.time() - start_time) * 1000)
             summary = (

@@ -56,6 +56,10 @@ class LineageNode(BaseModel):
     project_id: str = Field(..., description="Project identifier")
     tier: str = Field(default="BRONZE", description="Storage tier")
     format: str = Field(default="PARQUET", description="Data format")
+    lifecycle_status: str = Field(default="ACTIVE", description="Lifecycle state: ACTIVE, SOFT_DELETED, PURGED")
+    is_tombstone: bool = Field(default=False, description="True if upstream dataset was purged by TTL cleanup")
+    purged_at: Optional[str] = Field(default=None, description="Purge timestamp if tombstone")
+    applied_ttl: Optional[str] = Field(default=None, description="Applied TTL policy if tombstone")
 
 
 class LineageEdge(BaseModel):

@@ -133,12 +133,12 @@ In accordance with `Feature 006` (`006-remove-production-mocks`), synthetic load
 When data is ingested into a project workspace via [`ScopedIngestionService`](src/domains/project/operations/scoped_ingestion.py):
 
 1. **Tabular & Text Storage (`ingest_tabular`)**:
-   - Accepts CSV, JSON/JSONL, Parquet, or unstructured text files.
+   - Accepts CSV, JSON/JSONL, Parquet, or unstructured text files, along with optional `--ttl`, `--timestamp-column`, and `--overwrite` retention flags (`Feature 009`).
    - Normalizes tabular records into Snappy Parquet and writes to:
      ```text
-     s3://telemetry/projects/{project_id}/{tier}/{dataset_name}/year=YYYY/month=MM/day=DD/part_<ts>_<uuid>.parquet
+     s3://telemetry/projects/{project_id}/{tier}/{dataset_name}/year=YYYY/month=MM/day=DD/batch_<ts>_<uuid>.parquet
      ```
-   - Records dataset metadata (`size_bytes`, `record_count`, `storage_uri`) in PostgreSQL `project_datasets`.
+   - Records dataset metadata (`size_bytes`, `record_count`, `storage_uri`) in PostgreSQL `project_datasets`, registers per-file partition clocks (`ingested_at`, `min_event_ts`, `max_event_ts`) in `dataset_partitions`, and initializes the dataset's `DatasetRetentionState`.
 2. **Synchronous Phase 1 KDG Structural Indexing**:
    - Immediately invokes [`StructuralIndexer.index_tabular_data()`](src/domains/discovery/operations/structural_indexer.py) (or `index_text_document()`).
    - Profiles column types, cardinality, null counts, and regex patterns (`PatternProfiler`), upserting `Workspace`, `DataResource`, `DataAttribute`, and `GenericEntity` nodes into Memgraph.

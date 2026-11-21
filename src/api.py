@@ -49,10 +49,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_database()
     await create_tables()
 
+    # 2b. Start Automated Retention TTL Cleanup Scheduler
+    try:
+        from src.domains.retention.operations.cleanup_workflow import (
+            start_background_cleanup_scheduler,
+            stop_background_cleanup_scheduler,
+        )
+        start_background_cleanup_scheduler()
+    except Exception as e:
+        logger.warning(f"Could not start retention background scheduler: {e}")
+
     logger.info("Artemis FastAPI Gateway started successfully.")
     yield
 
     # 3. Teardown
+    try:
+        from src.domains.retention.operations.cleanup_workflow import stop_background_cleanup_scheduler
+        await stop_background_cleanup_scheduler()
+    except Exception:
+        pass
     await close_database()
     logger.info("Artemis FastAPI Gateway shutdown complete.")
 
@@ -75,6 +90,7 @@ from src.domains.pipeline.api.router import router as pipeline_router
 from src.domains.pipeline.api.routes import router as project_pipeline_router
 from src.domains.project.api.routes import router as project_router
 from src.domains.discovery.api.router import router as discovery_router
+from src.domains.retention.api.router import router as retention_router
 
 app.include_router(auth_router)
 app.include_router(analytics_router)
@@ -85,6 +101,7 @@ app.include_router(pipeline_router)
 app.include_router(project_pipeline_router)
 app.include_router(project_router)
 app.include_router(discovery_router)
+app.include_router(retention_router)
 
 
 

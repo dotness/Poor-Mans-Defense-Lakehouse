@@ -148,6 +148,29 @@ artemis project pipeline runs alpha-corp
 # Query project data partitions with DuckDB S3 prefix confinement
 artemis project query alpha-corp \
   --sql "SELECT device_id, AVG(cpu_usage) FROM read_parquet('s3://telemetry/projects/alpha-corp/bronze/**/*.parquet') GROUP BY device_id"
+
+# ---------------------------------------------------------
+# Dataset & Query Data TTL Retention & Auto-Cleanup (Feature 009)
+# ---------------------------------------------------------
+
+# Configure dataset TTL policy (ingestion age or event-timestamp column granularity)
+artemis project ttl set --project alpha-corp --dataset system_stats --tier bronze --ttl 30d
+artemis project ttl set --project alpha-corp --dataset system_stats --tier bronze --ttl 7d --granularity TIMESTAMP_COLUMN --timestamp-column timestamp
+
+# Inspect dataset TTL state, project summary, and configure tier/query-data defaults
+artemis project ttl get --project alpha-corp --dataset system_stats --tier bronze
+artemis project ttl summary --project alpha-corp
+artemis project ttl set-default --project alpha-corp --scope QUERY_DATA --artifact-type MATERIALIZED_EXPORT --ttl 14d
+
+# Place/release investigative Retention Holds and restore soft-deleted datasets during grace period
+artemis project ttl hold --project alpha-corp --dataset system_stats --reason "Incident review"
+artemis project ttl unhold --project alpha-corp --dataset system_stats
+artemis project ttl restore --project alpha-corp --dataset system_stats --ttl 60d
+
+# Preview (--dry-run) or execute two-stage TTL auto-cleanup and view audit history
+artemis project ttl cleanup --project alpha-corp --dry-run
+artemis project ttl cleanup --project alpha-corp
+artemis project ttl history --project alpha-corp
 ```
 
 > **Detailed Architecture & Flow**: For a detailed breakdown with sequence and data flow diagrams of `artemis ask`, see [AI RAG Scenario Deep Dive](docs/architecture/ai_rag_scenario.md).
@@ -220,7 +243,8 @@ make clean
 - **Interactive KDG & Zero-Trust Confinement Sandbox**: [docs/interactive/knowledge_discovery_explorer.html](docs/interactive/knowledge_discovery_explorer.html) – Interactive KDG ontology graph, caller RBAC switcher (`alice`, `bob`, `eve`, `admin`), cross-project `SAME_AS` entity search, lineage DAG, and regex `PatternProfiler` tester.
 
 ### 📐 Markdown Architecture Guides ([docs/README.md](docs/README.md))
-- **Microservice Domain Architecture**: [docs/architecture/microservice_domain_architecture.md](docs/architecture/microservice_domain_architecture.md) – Hexagonal domain-driven architecture, 8 core domain facades, 34 REST API routes, Temporal workflows, and Google ADK agent reasoning.
+- **Microservice Domain Architecture**: [docs/architecture/microservice_domain_architecture.md](docs/architecture/microservice_domain_architecture.md) – Hexagonal domain-driven architecture, 9 core domain facades, 46 REST API routes, Temporal workflows, and Google ADK agent reasoning.
+- **Dataset & Query Data TTL Retention Guide**: [docs/architecture/dataset_ttl_and_cleanup.md](docs/architecture/dataset_ttl_and_cleanup.md) – 4-tier TTL policy hierarchy, per-file ingestion clocks vs. `TIMESTAMP_COLUMN` row granularity, transparent SQL/Cypher read-time interception, source-aware cache invalidation, two-stage `SOFT_DELETED` grace period with single-pass Parquet compaction, reference-counted Memgraph entity pruning, and `:LineageTombstone` provenance preservation.
 - **Knowledge Discovery Graph Guide**: [docs/architecture/knowledge_discovery_graph_guide.md](docs/architecture/knowledge_discovery_graph_guide.md) – Universal domain-agnostic knowledge discovery graph, membership model, automated structural indexing, and federated entity resolution.
 - **Project Data Pipelines Guide**: [docs/architecture/project_data_pipelines.md](docs/architecture/project_data_pipelines.md) – Multi-tier Medallion architecture (Bronze/Silver/Gold), ephemeral Docker runner sandboxing, Python AST script validation, and scoped DuckDB partition querying.
 - **Data Ingestion Guide**: [docs/architecture/data_ingestion_guide.md](docs/architecture/data_ingestion_guide.md) – Step-by-step architecture, code paths, crash recovery, and flow diagrams for MQTT telemetry buffering, SpiderFoot OSINT graph ingestion, and project-scoped ingestion.
@@ -232,5 +256,5 @@ make clean
 
 ## 📄 License & Versioning
 
-- **Version**: `0.1.0` (see [VERSION](VERSION))
+- **Version**: `0.2.0` (see [VERSION](VERSION))
 - **Specification**: [specs/001-simplified-artemis/](specs/001-simplified-artemis/)

@@ -35,6 +35,9 @@ class TabularIngestRequestContract(BaseModel):
     filename: Optional[str] = Field(default="data.csv", description="Original filename")
     content_base64: Optional[str] = Field(default=None, description="Base64 encoded binary data (parquet/zip)")
     content_text: Optional[str] = Field(default=None, description="Plain text tabular data (CSV/JSON/TSV)")
+    ttl_expression: Optional[str] = Field(default=None, description="Optional dataset TTL duration e.g. '30d', '7d', 'never'")
+    timestamp_column: Optional[str] = Field(default=None, description="Optional event timestamp column for row-level TTL")
+    overwrite: bool = Field(default=False, description="Whether to overwrite existing partitions and reset ingestion TTL clock")
 
 
 class TabularIngestResponseContract(BaseModel):
@@ -44,6 +47,7 @@ class TabularIngestResponseContract(BaseModel):
     dataset_name: str
     records_ingested: int
     storage_uri: str
+    effective_ttl_expression: Optional[str] = None
 
 
 class GraphNodeContract(BaseModel):
@@ -62,6 +66,9 @@ class GraphEdgeContract(BaseModel):
 class GraphIngestRequestContract(BaseModel):
     nodes: List[GraphNodeContract] = Field(default_factory=list)
     edges: List[GraphEdgeContract] = Field(default_factory=list)
+    dataset_name: str = Field(default="knowledge_graph", description="Graph dataset identifier")
+    ttl_expression: Optional[str] = Field(default=None, description="Optional TTL duration for this graph dataset")
+    overwrite: bool = Field(default=False, description="Whether to reset TTL ingestion clock")
 
 
 class GraphIngestResponseContract(BaseModel):

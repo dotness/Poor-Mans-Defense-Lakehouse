@@ -13,8 +13,29 @@ except ImportError:
 
 
 def run_pipeline(name: str, json_mode: bool = False) -> int:
-    """Executes a named batch processing pipeline via PipelineFacade."""
+    """Executes a named batch processing pipeline via PipelineFacade or RetentionCleanupWorkflow."""
     require_cli_auth(json_mode=json_mode)
+    if name == "retention_auto_cleanup":
+        try:
+            from src.domains.retention.operations.cleanup_workflow import run_retention_cleanup_activity
+            res = asyncio.run(run_retention_cleanup_activity({"trigger_type": "MANUAL", "initiated_by": "cli"}))
+            if json_mode:
+                print(json.dumps(res, indent=2, default=str))
+            else:
+                print(
+                    f"Pipeline 'retention_auto_cleanup' executed with status: {res.get('status')}.\n"
+                    f"Datasets evaluated: {res.get('datasets_evaluated', 0)} | "
+                    f"Soft-deleted: {res.get('datasets_soft_deleted', 0)} | "
+                    f"Purged: {res.get('datasets_purged', 0)} | "
+                    f"Bytes reclaimed: {res.get('bytes_reclaimed', 0)}"
+                )
+            return 0
+        except Exception as e:
+            if json_mode:
+                print(json.dumps({"status": "FAILED", "pipeline": name, "error": str(e)}, indent=2))
+            else:
+                print(f"Pipeline '{name}' failed: {e}")
+            return 1
     try:
         facade = PipelineFacade()
         request = PipelineRunRequestContract(pipeline_name=name)

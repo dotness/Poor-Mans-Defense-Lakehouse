@@ -152,9 +152,12 @@ def delete_cmd(ctx, project_id, json_mode):
 @click.option("--dataset", "dataset_name", required=True, help="Dataset name/identifier (e.g. raw_logs)")
 @click.option("--tier", default="bronze", help="Medallion tier: bronze, silver, gold")
 @click.option("--file", "file_path", required=True, type=click.Path(exists=True), help="Path to input data file (CSV, JSON, Parquet)")
+@click.option("--ttl", "ttl_expression", default=None, help="Optional dataset TTL duration e.g. '30d', '7d', 'never'")
+@click.option("--timestamp-column", default=None, help="Optional event timestamp column for row-level TTL")
+@click.option("--overwrite", is_flag=True, default=False, help="Overwrite existing partitions and reset ingestion TTL clock")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def ingest_cmd(ctx, project_id, dataset_name, tier, file_path, json_mode):
+def ingest_cmd(ctx, project_id, dataset_name, tier, file_path, ttl_expression, timestamp_column, overwrite, json_mode):
     """Ingest tabular data into a project tier partition."""
     is_json = json_mode or ctx.obj.get("JSON_MODE", False) if ctx.obj else json_mode
     try:
@@ -169,6 +172,9 @@ def ingest_cmd(ctx, project_id, dataset_name, tier, file_path, json_mode):
                 data_bytes=data_bytes,
                 filename=path.name,
                 tier=tier,
+                ttl_expression=ttl_expression,
+                timestamp_column=timestamp_column,
+                overwrite=overwrite,
             )
         )
         if is_json:
@@ -487,15 +493,24 @@ def pipeline_runs_cmd(ctx, project_id, pipeline_id, json_mode):
 @project_group.command("query")
 @click.option("--project", "--project-id", "project_id", required=True, help="Target project identifier")
 @click.option("--sql", required=True, help="DuckDB SQL analytical query string")
+@click.option("--cache-ttl", default=None, help="Optional TTL for cached SQL query result e.g. '15m', '2h'")
+@click.option("--export-dataset", default=None, help="Optional dataset identifier to materialize query output")
+@click.option("--export-ttl", default=None, help="Optional TTL for materialized query export e.g. '7d'")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def project_query_cmd(ctx, project_id, sql, json_mode):
+def project_query_cmd(ctx, project_id, sql, cache_ttl, export_dataset, export_ttl, json_mode):
     """Execute analytical DuckDB SQL queries scoped to project S3 partitions."""
     is_json = json_mode or ctx.obj.get("JSON_MODE", False) if ctx.obj else json_mode
     try:
         from src.domains.analytics.operations.project_query import ProjectQueryExecutor
         executor = ProjectQueryExecutor()
-        result = executor.execute_scoped_query(project_id, sql)
+        result = executor.execute_scoped_query(
+            project_id,
+            sql,
+            cache_ttl=cache_ttl,
+            export_dataset=export_dataset,
+            export_ttl=export_ttl,
+        )
 
         if is_json:
             click.echo(json.dumps(result, indent=2))
@@ -730,4 +745,9 @@ def remove_member_cmd(ctx, project_id, user_id, json_mode):
         else:
             click.echo(f"Error removing member: {e}", err=True)
         sys.exit(1)
+
+
+from src.cli.commands.ttl import ttl_group
+project_group.add_command(ttl_group)
+
 

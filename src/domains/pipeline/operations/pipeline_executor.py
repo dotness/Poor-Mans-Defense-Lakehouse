@@ -72,6 +72,27 @@ class PipelineExecutor:
         input_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Acquire active operation leases for input and target datasets (FR-011)
+        acquired_leases = []
+        retention_repo = None
+        try:
+            from src.domains.retention.operations.retention_repository import RetentionRepository
+            retention_repo = RetentionRepository()
+            datasets_to_lock = set(contract.input_datasets or [])
+            if contract.target_dataset:
+                datasets_to_lock.add(contract.target_dataset)
+            for ds_name in datasets_to_lock:
+                lid = retention_repo.acquire_lease(
+                    project_id=project_id,
+                    dataset_id=ds_name,
+                    operation_type="PIPELINE_RUN",
+                    holder_id=run_id,
+                    ttl_seconds=max(300, int(contract.timeout_seconds or 300) + 60),
+                )
+                acquired_leases.append(lid)
+        except Exception as lease_err:
+            logger.debug(f"Pipeline lease acquisition notice: {lease_err}")
+
         try:
             # 3. Stage inputs
             self.dataset_stager.stage_inputs(
@@ -157,4 +178,10 @@ class PipelineExecutor:
                 details={"error": str(e)},
             )
         finally:
+            if acquired_leases and retention_repo is not None:
+                for lid in acquired_leases:
+                    try:
+                        retention_repo.release_lease(lid)
+                    except Exception:
+                        pass
             shutil.rmtree(workspace_dir, ignore_errors=True)

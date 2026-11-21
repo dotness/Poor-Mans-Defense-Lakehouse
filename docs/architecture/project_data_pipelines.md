@@ -125,12 +125,14 @@ df.to_parquet("/workspace/output/cleaned_metrics.parquet", index=False)
 
 Upon successful exit (`exit_code == 0`), [`PipelineExecutor`](src/domains/pipeline/operations/pipeline_executor.py) commits all output files in `/workspace/output/` to the target tier in MinIO, registers the new dataset in PostgreSQL, indexes its schema in the KDG, and records `DERIVED_FROM`, `CONSUMED`, and `PRODUCED` lineage edges in Memgraph via [`LineageService`](src/domains/discovery/operations/lineage.py).
 
-### 3.4 Scoped Analytical Query Confinement
+### 3.4 Scoped Analytical Query Confinement & Read-Time TTL Filtering
 
-Analysts query project partitions using DuckDB SQL via [`ProjectQueryExecutor`](src/domains/analytics/operations/project_query.py). To prevent unauthorized cross-project data leakage:
+Analysts query project partitions using DuckDB SQL via [`ProjectQueryExecutor`](src/domains/analytics/operations/project_query.py). To prevent unauthorized cross-project data leakage and stale data exposure:
 - **Read-Only Guardrail**: Blocks mutating keywords (`DROP`, `DELETE`, `INSERT`, `UPDATE`, `ALTER`, `COPY`, `ATTACH`, `DETACH`).
-- **S3 Prefix Confinement**: Inspects all `s3://` URIs in the SQL query. Every URI must begin with `s3://telemetry/projects/{project_id}/`. Queries referencing root `s3://telemetry/` or another project (`s3://telemetry/projects/other-proj/`) raise `PermissionError`.
-- **Graceful Empty Partition Handling**: Queries against a valid project prefix that has no files yet return `{"columns": [], "rows": [], "row_count": 0, "empty": True}` without crashing.
+- **S3 Prefix Confinement**: Inspects all `s3://` URIs in the SQL query. Every URI must begin with `s3://telemetry/projects/{project_id}/`. Queries referencing root `s3://telemetry/` or another project (`s3://telemetry/projects/other-proj/`) raise `ValueError` (`Access Denied`).
+- **Transparent Read-Time TTL Interception (`Feature 009`)**: [`QueryTTLInterceptor`](src/domains/retention/operations/query_interceptor.py) automatically excludes expired or `SOFT_DELETED` dataset partitions and injects `TRY_CAST("<timestamp_column>" AS TIMESTAMPTZ) >= TIMESTAMPTZ '<cutoff>'` subqueries for `TIMESTAMP_COLUMN` datasets, while acquiring an active operation lease in `dataset_active_leases`.
+- **Query Data Artifact Governance**: Supports `--cache-ttl`, `--export-dataset`, and `--export-ttl` to govern query result caches and materialized query exports.
+- **Graceful Empty Partition Handling**: Queries against a valid project prefix that has no active files return `{"columns": [], "rows": [], "row_count": 0, "empty": True}` without crashing.
 
 ---
 

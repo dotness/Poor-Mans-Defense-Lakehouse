@@ -17,21 +17,39 @@ class QueryService:
 
     def execute(self, sql: str, output_format: str = "table") -> Tuple[str, Dict[str, Any]]:
         start_time = time.time()
+        executable_sql = sql
+        short_circuit_empty = False
         try:
-            cursor = self.client.query(sql)
-            duration_sec = time.time() - start_time
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            rows = cursor.fetchall()
-            row_count = len(rows)
-        except Exception as e:
-            err_msg = str(e)
-            if "No files found that match the pattern" in err_msg or "No files match" in err_msg:
-                duration_sec = time.time() - start_time
-                columns = []
-                rows = []
-                row_count = 0
+            from src.domains.retention.operations.query_interceptor import QueryTTLInterceptor
+            interception = QueryTTLInterceptor().intercept_sql_query(sql)
+            if interception.short_circuit_empty:
+                short_circuit_empty = True
             else:
-                raise
+                executable_sql = interception.rewritten_sql
+        except Exception:
+            pass
+
+        if short_circuit_empty:
+            duration_sec = time.time() - start_time
+            columns = []
+            rows = []
+            row_count = 0
+        else:
+            try:
+                cursor = self.client.query(executable_sql)
+                duration_sec = time.time() - start_time
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                rows = cursor.fetchall()
+                row_count = len(rows)
+            except Exception as e:
+                err_msg = str(e)
+                if "No files found that match the pattern" in err_msg or "No files match" in err_msg:
+                    duration_sec = time.time() - start_time
+                    columns = []
+                    rows = []
+                    row_count = 0
+                else:
+                    raise
 
         meta = {
             "query": sql,

@@ -23,7 +23,8 @@ Explore the architecture, live packet flows, multi-database AI agent loops, and 
 
 | Document | Feature Alignment | Summary |
 | :--- | :--- | :--- |
-| [**Microservice Domain Architecture**](architecture/microservice_domain_architecture.md) | `002-uservice-alignment`<br>`005-knowledge-discovery-graph`<br>`006-remove-production-mocks` | Hexagonal DDD architecture aligned with `uservice-template`, detailing all **8 core domains** (`auth`, `ingestion`, `analytics`, `graph`, `ai`, `pipeline`, `project`, `discovery`), **34 FastAPI endpoints**, Temporal workflows, Google ADK 2.0 agents, and fail-fast exception boundaries. |
+| [**Microservice Domain Architecture**](architecture/microservice_domain_architecture.md) | `002-uservice-alignment`<br>`005-knowledge-discovery-graph`<br>`006-remove-production-mocks`<br>`009-dataset-ttl-cleanup` | Hexagonal DDD architecture aligned with `uservice-template`, detailing all **9 core domains** (`auth`, `ingestion`, `analytics`, `graph`, `ai`, `pipeline`, `project`, `discovery`, `retention`), **46 FastAPI endpoints**, Temporal workflows, Google ADK 2.0 agents, and fail-fast exception boundaries. |
+| [**Dataset & Query Data TTL Retention & Cleanup**](architecture/dataset_ttl_and_cleanup.md) | `009-dataset-ttl-cleanup` | 4-tier TTL policy hierarchy, per-file ingestion clocks vs. `TIMESTAMP_COLUMN` row granularity, transparent DuckDB SQL & Cypher read-time interception, source-aware query cache invalidation, two-stage `SOFT_DELETED` grace period with single-pass Parquet compaction, reference-counted Memgraph entity pruning, and `:LineageTombstone` provenance preservation. |
 | [**Universal Knowledge Discovery Graph (KDG) Guide**](architecture/knowledge_discovery_graph_guide.md) | `005-knowledge-discovery-graph` | Federated semantic metadata overlay in Memgraph: 6 node types (`Workspace`, `DataResource`, `DataAttribute`, `GenericEntity`, `SemanticTaxonomy`, `PipelineExecution`), 2-phase indexing (`StructuralIndexer` + `KDGEnrichmentWorkflow`), Rapidfuzz + DSU entity resolution, and zero-trust membership confinement. |
 | [**Project Data Pipelines & Medallion Sandbox**](architecture/project_data_pipelines.md) | `004-project-data-pipelines` | Multi-tier Medallion lakehouse (`BRONZE`, `SILVER`, `GOLD`), AST script validation (`ast.parse`), ephemeral rootless Docker runner (`artemis-pipeline-runner:latest` with `--network=none`, `--memory=2g`, `--cpus=2.0`), and DuckDB S3 prefix confinement. |
 | [**Data Ingestion Architecture & Operations**](architecture/data_ingestion_guide.md) | `001-simplified-artemis`<br>`004-project-data-pipelines`<br>`005-knowledge-discovery-graph` | Three ingestion tracks: (1) High-frequency MQTT telemetry (`tools/simulate_telemetry.py` $\rightarrow$ disk buffer $\rightarrow$ atomic rotation $\rightarrow$ Snappy Parquet $\rightarrow$ MinIO), (2) SpiderFoot OSINT graph import, and (3) Project-scoped tabular/graph ingestion with synchronous KDG Phase 1 profiling. |
@@ -43,7 +44,7 @@ flowchart TD
     Gateway["FastAPI Unified Gateway (:8000 / Traefik :80/:443)"]
     AuthLayer["JWT Bearer Middleware & RBAC (src/security)"]
 
-    subgraph Domains ["8 Core Domain Facades (src/domains)"]
+    subgraph Domains ["9 Core Domain Facades (src/domains)"]
         DAuth["1. AuthFacade"]
         DIngest["2. IngestionFacade"]
         DAnalytics["3. AnalyticsFacade"]
@@ -52,6 +53,7 @@ flowchart TD
         DPipeline["6. PipelineFacade"]
         DProject["7. ProjectFacade"]
         DDiscovery["8. DiscoveryFacade"]
+        DRetention["9. RetentionFacade"]
     end
 
     subgraph Orchestration ["Execution & Reasoning Engines"]
@@ -97,12 +99,16 @@ flowchart TD
     DProject --> Memgraph
     DDiscovery --> Memgraph
     DDiscovery --> Postgres
+    DRetention --> Postgres
+    DRetention --> MinIO
+    DRetention --> Memgraph
+    DRetention --> Redis
     DAuth --> Postgres
 ```
 
 ---
 
-## 📋 Feature Evolution Matrix (`specs/001` – `006`)
+## 📋 Feature Evolution Matrix (`specs/001` – `009`)
 
 | Spec ID | Feature Name | Key Deliverables |
 | :--- | :--- | :--- |
@@ -111,4 +117,7 @@ flowchart TD
 | **`003-dynamic-agent-tools`** | Autonomous Multi-Database Agent Loop | `DynamicAgentLoop` with multi-turn Gemini Function Calling across DuckDB (`query_analytics`), Memgraph (`query_graph`), and schema reflection (`get_schema_info`), enforced by read-only AST/keyword guardrails. |
 | **`004-project-data-pipelines`** | Isolated Projects & Medallion Sandboxes | Multi-tenant project workspaces (`BRONZE`, `SILVER`, `GOLD`), tabular & graph project ingestion, AST-validated shareable Python pipelines, rootless ephemeral Docker runner (`artemis-pipeline-runner:latest`), and DuckDB S3 prefix confinement. |
 | **`005-knowledge-discovery-graph`** | Universal Knowledge Discovery Graph | Domain-agnostic KDG ontology in Memgraph, 2-phase indexing (`StructuralIndexer` + `PatternProfiler` & `KDGEnrichmentWorkflow`), `Rapidfuzz` + DSU cross-project entity resolution, dataset lineage tracking, zero-trust `project_members` RBAC, `artemis discover` CLI, and 3 new AI discovery tools. |
-| **`006-remove-production-mocks`** | Clean Production Architecture | Purged all test/simulation fallbacks from `src/`, introduced fail-fast typed exceptions (`ConfigurationError`, `ConnectionError`, `ServiceUnavailableError`), relocated `simulate_telemetry.py` to `tools/`, and built 6 reusable test doubles in `tests/fixtures/mocks/` (162/162 offline tests passing). |
+| **`006-remove-production-mocks`** | Clean Production Architecture | Purged all test/simulation fallbacks from `src/`, introduced fail-fast typed exceptions (`ConfigurationError`, `ConnectionError`, `ServiceUnavailableError`), relocated `simulate_telemetry.py` to `tools/`, and built 6 reusable test doubles in `tests/fixtures/mocks/`. |
+| **`007-infra-architecture-remediation`** | Infrastructure & Architecture Hardening | Consolidated zero-JVM container orchestration, health checks, and deployment topology docs. |
+| **`008-repo-sanitization-rename`** | Repository Sanitization & Sovereignty | Automated PII/IP redaction and repository sanitization tooling (`tools/sanitize_repo.py`). |
+| **`009-dataset-ttl-cleanup`** | Dataset & Query Data TTL Retention & Cleanup | `RetentionDomain` (`RetentionFacade`), 4-tier TTL hierarchy (`DATASET` > `TIER` > `PROJECT` > `PLATFORM`), per-file `ingested_at` vs. `TIMESTAMP_COLUMN` row granularity, transparent SQL/Cypher `QueryTTLInterceptor`, query artifact governance & source-aware cache invalidation, two-stage `SOFT_DELETED` grace period with single-pass Parquet compaction, active lease protection, reference-counted Memgraph entity pruning, `:LineageTombstone` preservation, and `artemis project ttl` CLI (190/190 tests passing). |

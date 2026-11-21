@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artemis-platform"
-version = "0.1.0"
+version = "0.2.0"
 description = "Poor Man's Defense Lakehouse: Sovereign Big Data Lakehouse and AI infostructure on a single VM"
 readme = "README.md"
 requires-python = ">=3.11"

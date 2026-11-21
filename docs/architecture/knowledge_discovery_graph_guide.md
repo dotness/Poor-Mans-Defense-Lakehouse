@@ -46,9 +46,9 @@ graph TD
 | Label | Key Properties | Description |
 | :--- | :--- | :--- |
 | `Workspace` | `project_id`, `name`, `owner_user_id` | Project tenant boundary in the knowledge graph. |
-| `DataResource` | `resource_id`, `project_id`, `tier`, `format`, `record_count`, `byte_size` | A dataset or document ingested into `BRONZE`, `SILVER`, or `GOLD`. |
+| `DataResource` | `resource_id`, `project_id`, `tier`, `format`, `record_count`, `byte_size`, `lifecycle_status` | A dataset or document ingested into `BRONZE`, `SILVER`, or `GOLD` (`ACTIVE`, `SOFT_DELETED`, or `PURGED` `:LineageTombstone`). |
 | `DataAttribute` | `attribute_id`, `project_id`, `resource_id`, `name`, `physical_type`, `inferred_type`, `cardinality`, `null_count` | Column or JSON field profiled during Phase 1 structural indexing. |
-| `GenericEntity` | `entity_id`, `project_id`, `resource_id`, `attribute`, `value`, `entity_type`, `extraction_method`, `confidence` | Extracted identifier or named entity value scoped to its source project. |
+| `GenericEntity` | `entity_id`, `project_id`, `resource_id`, `attribute`, `value`, `entity_type`, `extraction_method`, `confidence` | Extracted identifier or named entity value scoped to its source project (reference-counted across `CONTAINS_ENTITY` edges during TTL purge). |
 | `SemanticTaxonomy` | `concept_id`, `name`, `category` | Shared semantic concept unifying synonymous attributes across datasets (e.g., `acct_id` and `account_number` $\rightarrow$ `Identifier:Account`). |
 | `PipelineExecution` | `run_id`, `project_id`, `pipeline_id`, `status` | Execution record linking input `DataResource` nodes (`CONSUMED`) to output `DataResource` nodes (`PRODUCED`). |
 

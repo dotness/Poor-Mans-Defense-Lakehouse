@@ -57,6 +57,9 @@ class ProjectFacade:
         data_bytes: bytes,
         filename: str,
         tier: str = "BRONZE",
+        ttl_expression: Optional[str] = None,
+        timestamp_column: Optional[str] = None,
+        overwrite: bool = False,
     ) -> TabularIngestResponseContract:
         return self.ingestion.ingest_tabular(
             project_id=project_id,
@@ -64,6 +67,9 @@ class ProjectFacade:
             data_bytes=data_bytes,
             filename=filename,
             tier=tier,
+            ttl_expression=ttl_expression,
+            timestamp_column=timestamp_column,
+            overwrite=overwrite,
         )
 
     async def ingest_graph(
@@ -71,11 +77,17 @@ class ProjectFacade:
         project_id: str,
         nodes: List[Dict[str, Any]],
         edges: List[Dict[str, Any]],
+        dataset_name: str = "knowledge_graph",
+        ttl_expression: Optional[str] = None,
+        overwrite: bool = False,
     ) -> GraphIngestResponseContract:
         return self.ingestion.ingest_graph(
             project_id=project_id,
             nodes=nodes,
             edges=edges,
+            dataset_name=dataset_name,
+            ttl_expression=ttl_expression,
+            overwrite=overwrite,
         )
 
     async def list_datasets(

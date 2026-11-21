@@ -102,5 +102,16 @@ class Settings:
     discovery_lineage_depth: int = int(os.getenv("DISCOVERY_LINEAGE_DEPTH", "10"))
     discovery_retry_attempts: int = int(os.getenv("DISCOVERY_RETRY_ATTEMPTS", "3"))
 
+    # Dataset & Query Data TTL Retention (Feature 009)
+    default_bronze_ttl: str = os.getenv("DEFAULT_BRONZE_TTL", "30d")
+    default_silver_ttl: str = os.getenv("DEFAULT_SILVER_TTL", "90d")
+    default_gold_ttl: str = os.getenv("DEFAULT_GOLD_TTL", "365d")
+    default_query_cache_ttl: str = os.getenv("DEFAULT_QUERY_CACHE_TTL", "1h")
+    default_query_export_ttl: str = os.getenv("DEFAULT_QUERY_EXPORT_TTL", "7d")
+    default_query_history_ttl: str = os.getenv("DEFAULT_QUERY_HISTORY_TTL", "30d")
+    default_grace_period: str = os.getenv("DEFAULT_GRACE_PERIOD", "24h")
+    cleanup_interval_seconds: int = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "300"))
+
+
 
 settings = Settings()

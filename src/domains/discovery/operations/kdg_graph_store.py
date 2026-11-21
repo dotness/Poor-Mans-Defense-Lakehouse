@@ -65,10 +65,10 @@ class KDGGraphStore:
             MERGE (r:DataResource {project_id: $project_id, resource_id: $resource_id})
             ON CREATE SET r.format = $format, r.tier = $tier, r.record_count = $record_count,
                           r.location_uri = $location_uri, r.kind = $kind, r.index_version = $index_version,
-                          r.indexed_at = datetime()
+                          r.lifecycle_status = 'ACTIVE', r.indexed_at = datetime()
             ON MATCH SET r.format = $format, r.tier = $tier, r.record_count = $record_count,
                          r.location_uri = $location_uri, r.kind = $kind, r.index_version = $index_version,
-                         r.indexed_at = datetime()
+                         r.lifecycle_status = 'ACTIVE', r.indexed_at = datetime()
             MERGE (w)-[:OWNS_RESOURCE]->(r)
             RETURN r;
         """
@@ -300,6 +300,123 @@ class KDGGraphStore:
         """
         self.client.execute_query(query, {"project_id": project_id, "resource_id": resource_id})
 
+    def set_resource_lifecycle_status(
+        self,
+        project_id: str,
+        resource_id: str,
+        lifecycle_status: str,
+    ) -> None:
+        """Updates lifecycle_status ('ACTIVE', 'SOFT_DELETED', 'PURGED') on a DataResource node."""
+        query = """
+            MATCH (r:DataResource {project_id: $project_id, resource_id: $resource_id})
+            SET r.lifecycle_status = $status
+            RETURN r;
+        """
+        self.client.execute_query(
+            query,
+            {"project_id": project_id, "resource_id": resource_id, "status": lifecycle_status},
+        )
+
+    def purge_resource_with_ref_counting_and_tombstone(
+        self,
+        project_id: str,
+        resource_id: str,
+        applied_ttl_expression: str,
+        purged_at_iso: str,
+    ) -> Tuple[int, bool, List[str], List[str]]:
+        """
+        Coordinates reference-counted entity pruning and LineageTombstone preservation (FR-008, FR-009):
+        1. Checks if the DataResource has downstream DERIVED_FROM or upstream lineage edges.
+        2. Removes DataAttribute nodes and CONTAINS_ENTITY edges belonging to this DataResource.
+        3. Prunes GenericEntity nodes in this project that now have zero incoming CONTAINS_ENTITY edges
+           from active DataResource nodes (preserving shared entities referenced by other active datasets).
+        4. If downstream lineage exists, converts DataResource in-place into a :LineageTombstone node
+           with lifecycle_status = 'PURGED'; otherwise deletes the DataResource node.
+        Returns (graph_elements_pruned_count, tombstone_created_bool, upstream_ids, downstream_ids).
+        """
+        # 1. Inspect lineage neighbors
+        lineage_q = """
+            MATCH (r:DataResource {project_id: $project_id, resource_id: $resource_id})
+            OPTIONAL MATCH (up:DataResource)-[:DERIVED_FROM]->(r)
+            OPTIONAL MATCH (r)-[:DERIVED_FROM]->(down:DataResource)
+            RETURN collect(DISTINCT up.resource_id) as upstream,
+                   collect(DISTINCT down.resource_id) as downstream;
+        """
+        lin_records = self.client.execute_query(
+            lineage_q,
+            {"project_id": project_id, "resource_id": resource_id},
+        )
+        upstream_ids: List[str] = []
+        downstream_ids: List[str] = []
+        if lin_records:
+            upstream_ids = [u for u in (lin_records[0].get("upstream") or []) if u]
+            downstream_ids = [d for d in (lin_records[0].get("downstream") or []) if d]
+
+        # 2. Delete attributes and CONTAINS_ENTITY relationships from this resource
+        detach_attrs_q = """
+            MATCH (r:DataResource {project_id: $project_id, resource_id: $resource_id})
+            OPTIONAL MATCH (r)-[:HAS_ATTRIBUTE]->(a:DataAttribute)
+            WITH r, collect(a) as attrs
+            FOREACH (attr IN attrs | DETACH DELETE attr)
+            RETURN size(attrs) as deleted_attrs;
+        """
+        attr_recs = self.client.execute_query(
+            detach_attrs_q,
+            {"project_id": project_id, "resource_id": resource_id},
+        )
+        pruned_count = int(attr_recs[0].get("deleted_attrs", 0)) if attr_recs else 0
+
+        del_entity_links_q = """
+            MATCH (r:DataResource {project_id: $project_id, resource_id: $resource_id})-[rel:CONTAINS_ENTITY]->(e:GenericEntity)
+            DELETE rel
+            RETURN count(rel) as deleted_rels;
+        """
+        rel_recs = self.client.execute_query(
+            del_entity_links_q,
+            {"project_id": project_id, "resource_id": resource_id},
+        )
+        pruned_count += int(rel_recs[0].get("deleted_rels", 0)) if rel_recs else 0
+
+        # 3. Reference-counted GenericEntity pruning: delete only entities with 0 active CONTAINS_ENTITY edges
+        prune_orphans_q = """
+            MATCH (e:GenericEntity {project_id: $project_id})
+            WHERE NOT (:DataResource)-[:CONTAINS_ENTITY]->(e)
+            WITH collect(e) as orphans
+            FOREACH (o IN orphans | DETACH DELETE o)
+            RETURN size(orphans) as deleted_entities;
+        """
+        ent_recs = self.client.execute_query(prune_orphans_q, {"project_id": project_id})
+        pruned_count += int(ent_recs[0].get("deleted_entities", 0)) if ent_recs else 0
+
+        # 4. Convert to LineageTombstone if downstream lineage exists, else delete DataResource
+        tombstone_created = False
+        if downstream_ids or upstream_ids:
+            tombstone_q = """
+                MATCH (r:DataResource {project_id: $project_id, resource_id: $resource_id})
+                SET r:LineageTombstone,
+                    r.lifecycle_status = 'PURGED',
+                    r.purged_at = $purged_at,
+                    r.applied_ttl = $applied_ttl,
+                    r.location_uri = null,
+                    r.record_count = 0
+                RETURN r;
+            """
+            self.client.execute_query(
+                tombstone_q,
+                {
+                    "project_id": project_id,
+                    "resource_id": resource_id,
+                    "purged_at": purged_at_iso,
+                    "applied_ttl": applied_ttl_expression,
+                },
+            )
+            tombstone_created = True
+        else:
+            self.delete_resource(project_id, resource_id)
+            pruned_count += 1
+
+        return pruned_count, tombstone_created, upstream_ids, downstream_ids
+
     def delete_workspace_subtree(self, project_id: str) -> None:
         """Deletes workspace, all its resources, attributes, and entities."""
         query = """
@@ -325,6 +442,7 @@ class KDGGraphStore:
 
         query = """
             MATCH (r:DataResource {project_id: $project_id})
+            WHERE COALESCE(r.lifecycle_status, 'ACTIVE') = 'ACTIVE'
             OPTIONAL MATCH (r)-[:HAS_ATTRIBUTE]->(a:DataAttribute)
             OPTIONAL MATCH (a)-[mt:MAPS_TO_TAXONOMY]->(t:SemanticTaxonomy)
             OPTIONAL MATCH (r)-[:CONTAINS_ENTITY]->(e:GenericEntity)
@@ -407,10 +525,11 @@ class KDGGraphStore:
         if not allowed_projects:
             return EntityCorrelationContract(query=query_label, matches=[], total_projects=0)
 
-        # Cypher query with strict member_projects confinement
+        # Cypher query with strict member_projects confinement and active lifecycle check
         query = """
             MATCH (r:DataResource)-[rel:CONTAINS_ENTITY]->(e:GenericEntity)
             WHERE r.project_id IN $projects
+              AND COALESCE(r.lifecycle_status, 'ACTIVE') = 'ACTIVE'
               AND ($val IS NULL OR e.normalized_value = $val)
               AND ($type IS NULL OR toLower(e.entity_type) = toLower($type))
             RETURN r.project_id as project_id, r.resource_id as resource_id, r.tier as tier,

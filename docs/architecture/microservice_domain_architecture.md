@@ -20,6 +20,7 @@ flowchart TD
         PipelineFacade["6. PipelineFacade (pipeline)"]
         ProjectFacade["7. ProjectFacade (project)"]
         DiscoveryFacade["8. DiscoveryFacade (discovery)"]
+        RetentionFacade["9. RetentionFacade (retention)"]
     end
 
     subgraph OrchestrationLayer ["Orchestration & Reasoning Layer"]
@@ -84,12 +85,13 @@ Each business capability resides within [`src/domains/<domain>/`](src/domains) a
 6. **`pipeline`** ([`src/domains/pipeline/`](src/domains/pipeline)): System batch pipelines (`mqtt_to_minio`) and project-scoped Medallion transformation pipelines with Python AST syntax/security validation, immutable version increments, and rootless ephemeral Docker execution.
 7. **`project`** ([`src/domains/project/`](src/domains/project)): Multi-tier isolated project workspaces (`BRONZE`, `SILVER`, `GOLD`), tabular/graph ingestion (`ScopedIngestionService`), and role-based project membership (`ProjectMembershipService` with `owner` and `member` roles).
 8. **`discovery`** ([`src/domains/discovery/`](src/domains/discovery)): Universal Domain-Agnostic Knowledge Discovery Graph (KDG) overlay in Memgraph, 2-phase indexing (`StructuralIndexer`, `PatternProfiler`, `KDGEnrichmentWorkflow`), `Rapidfuzz` + Disjoint-Set Union (`DSU`) entity resolution, and dataset provenance/lineage tracking.
+9. **`retention`** ([`src/domains/retention/`](src/domains/retention)): Dataset & Query Data TTL lifecycle governance (`PolicyResolver`, `QueryTTLInterceptor`, `QueryArtifactManager`, `ParquetCompactor`, `CleanupEngine`, `RetentionCleanupWorkflow`), enforcing 4-tier TTL hierarchy, transparent read-time SQL/Cypher filtering, source-aware cache invalidation, two-stage `SOFT_DELETED` grace periods, single-pass Parquet compaction, active lease protection, reference-counted Memgraph entity pruning, and `:LineageTombstone` provenance preservation.
 
 ---
 
-## 2. Complete REST API Surface (34 Endpoints)
+## 2. Complete REST API Surface (46 Endpoints)
 
-The FastAPI gateway ([`src/api.py`](src/api.py)) mounts 9 routers across the 8 domains plus system health:
+The FastAPI gateway ([`src/api.py`](src/api.py)) mounts 10 routers across the 9 domains plus system health:
 
 | Domain / Tag | Method & Path | Handler / Description |
 | :--- | :--- | :--- |
@@ -128,6 +130,18 @@ The FastAPI gateway ([`src/api.py`](src/api.py)) mounts 9 routers across the 8 d
 | **Discovery (KDG)** | `GET /api/v1/discovery/lineage/{project_id}/{dataset_id}` | Traverse upstream/downstream dataset derivations (`DERIVED_FROM`, `PRODUCED`). |
 | **Discovery (KDG)** | `POST /api/v1/discovery/reindex/{project_id}` | Schedule an asynchronous KDG structural/enrichment re-index job (`202 Accepted`). |
 | **Discovery (KDG)** | `GET /api/v1/discovery/jobs/{project_id}` | List KDG indexing jobs and their phase/status (`pending`, `running`, `completed`). |
+| **Retention (TTL)** | `PUT /api/v1/projects/{project_id}/datasets/{dataset_id}/ttl` | Set or update dataset TTL policy (`INGESTION_AGE` or `TIMESTAMP_COLUMN`). |
+| **Retention (TTL)** | `GET /api/v1/projects/{project_id}/datasets/{dataset_id}/ttl` | Inspect effective dataset TTL policy, partition count, and lifecycle status. |
+| **Retention (TTL)** | `DELETE /api/v1/projects/{project_id}/datasets/{dataset_id}/ttl` | Clear explicit dataset TTL override and revert to tier/project default. |
+| **Retention (TTL)** | `PUT /api/v1/projects/{project_id}/ttl/defaults` | Configure project-level, tier-level, or query artifact default TTL policies. |
+| **Retention (TTL)** | `PUT /api/v1/projects/{project_id}/datasets/{dataset_id}/hold` | Place or release a Retention Hold on a dataset. |
+| **Retention (TTL)** | `PUT /api/v1/projects/{project_id}/ttl/hold` | Place or release a Retention Hold across all datasets in a project. |
+| **Retention (TTL)** | `POST /api/v1/projects/{project_id}/datasets/{dataset_id}/ttl/restore` | Explicitly restore a `SOFT_DELETED` dataset or query export during its grace period. |
+| **Retention (TTL)** | `GET /api/v1/projects/{project_id}/ttl/summary` | Retrieve project retention dashboard summary and expiring-soon counts. |
+| **Retention (TTL)** | `POST /api/v1/projects/{project_id}/ttl/cleanup` | Trigger on-demand project TTL cleanup or deterministic `--dry-run` preview. |
+| **Retention (TTL)** | `GET /api/v1/projects/{project_id}/ttl/cleanup/runs` | List historical `CleanupJobRun` audit records for a project. |
+| **Retention (TTL)** | `POST /api/v1/retention/cleanup` | Trigger global TTL cleanup or dry-run sweep across all projects. |
+| **Retention (TTL)** | `GET /api/v1/retention/cleanup/runs` | List global historical cleanup execution runs. |
 
 ---
 
@@ -153,6 +167,8 @@ Batch and asynchronous enrichment workflows are structured around Temporal ([`sr
   - `ParseSpiderfootStep` $\rightarrow$ `ImportToMemgraphStep`.
 - **`KDGEnrichmentWorkflow`** ([`src/domains/discovery/operations/enrichment_workflow.py`](src/domains/discovery/operations/enrichment_workflow.py)):
   - Asynchronous Phase 2 KDG semantic taxonomy mapping, unstructured text NER extraction, and cross-project `SAME_AS` entity resolution.
+- **`RetentionCleanupWorkflow`** ([`src/domains/retention/operations/cleanup_workflow.py`](src/domains/retention/operations/cleanup_workflow.py)):
+  - Periodic background and on-demand two-stage TTL cleanup (`SOFT_DELETED` grace period $\rightarrow$ physical S3 purge, single-pass Parquet compaction, reference-counted Memgraph entity pruning, and `:LineageTombstone` preservation).
 
 ---
 

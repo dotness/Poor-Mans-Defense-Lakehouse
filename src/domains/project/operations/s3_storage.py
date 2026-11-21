@@ -63,20 +63,34 @@ class ProjectS3Storage:
         tier: str,
         data_bytes: bytes,
         filename: str,
+        overwrite: bool = False,
+        timestamp_column: Optional[str] = None,
     ) -> Tuple[str, int, int]:
         """
         Uploads tabular data (CSV, JSON, Parquet) into the project's tier partition.
         Converts CSV / JSON into Parquet if possible for uniform lake querying, or stores natively.
+        If overwrite=True, removes existing S3 objects under this dataset prefix first.
         Returns: (storage_uri, record_count, size_bytes)
         """
         now = datetime.now(timezone.utc)
         prefix = self.get_tier_prefix(project_id, tier, dataset_name)
+        if overwrite:
+            try:
+                old_keys = self.list_dataset_objects(project_id, tier, dataset_name)
+                for ok in old_keys:
+                    self.client.remove_object(self.bucket, ok)
+            except Exception as e:
+                logger.debug(f"Could not remove previous objects on overwrite: {e}")
+
         date_partition = f"year={now.year:04d}/month={now.month:02d}/day={now.day:02d}"
 
         # Attempt to parse into PyArrow Table
         ext = filename.lower().split(".")[-1] if "." in filename else ""
         table = None
         record_count = 0
+        self.last_uploaded_min_event_ts: Optional[datetime] = None
+        self.last_uploaded_max_event_ts: Optional[datetime] = None
+        self.last_uploaded_object_key: Optional[str] = None
 
         try:
             if ext == "parquet":
@@ -90,6 +104,14 @@ class ProjectS3Storage:
 
         if table is not None:
             record_count = table.num_rows
+            if timestamp_column:
+                try:
+                    from src.domains.retention.operations.parquet_compactor import extract_parquet_timestamp_bounds
+                    min_ts, max_ts = extract_parquet_timestamp_bounds(table, timestamp_column)
+                    self.last_uploaded_min_event_ts = min_ts
+                    self.last_uploaded_max_event_ts = max_ts
+                except Exception as te:
+                    logger.debug(f"Timestamp extraction notice: {te}")
             sink = io.BytesIO()
             pq.write_table(table, sink, compression="SNAPPY")
             sink.seek(0)
@@ -100,6 +122,8 @@ class ProjectS3Storage:
             object_name = f"{prefix}{date_partition}/raw_{int(now.timestamp())}_{uuid.uuid4().hex[:8]}_{filename}"
             # Approximate record count by line count
             record_count = max(1, data_bytes.count(b"\n"))
+
+        self.last_uploaded_object_key = object_name
 
         size_bytes = len(upload_bytes)
         self.client.put_object(

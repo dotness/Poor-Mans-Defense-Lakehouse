@@ -84,9 +84,10 @@ def query_cmd(ctx, sql, output_format, cmd_json_mode):
 
 @cli.command("ask")
 @click.argument("prompt")
+@click.option("--cache-ttl", default=None, help="Optional TTL for cached AI response e.g. '30m', '2h'")
 @click.option("--json", "cmd_json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def ask_cmd(ctx, prompt, cmd_json_mode):
+def ask_cmd(ctx, prompt, cache_ttl, cmd_json_mode):
     """Ask natural language intelligence questions via Google AI Studio + Memgraph."""
     json_mode = cmd_json_mode or ctx.obj.get("JSON_MODE", False)
     try:
@@ -94,7 +95,7 @@ def ask_cmd(ctx, prompt, cmd_json_mode):
             from src.cli.commands.ask import run_ask
         except ImportError:
             from cli.commands.ask import run_ask
-        exit_code = run_ask(prompt=prompt, json_mode=json_mode)
+        exit_code = run_ask(prompt=prompt, json_mode=json_mode, cache_ttl=cache_ttl)
         sys.exit(exit_code)
     except ImportError:
         click.echo("Error: AI correlation service not yet implemented.", err=True)

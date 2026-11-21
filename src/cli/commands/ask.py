@@ -22,7 +22,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def run_ask(prompt: str, user_id: str = "analyst", json_mode: bool = False) -> int:
+def run_ask(prompt: str, user_id: str = "analyst", json_mode: bool = False, cache_ttl: Optional[str] = None) -> int:
     """CLI handler for `artemis ask <prompt>` via AIFacade."""
     require_cli_auth(json_mode=json_mode)
     token_payload = verify_cli_token()
@@ -33,6 +33,18 @@ def run_ask(prompt: str, user_id: str = "analyst", json_mode: bool = False) -> i
         facade = AIFacade(user=user_ctx)
         request = AIQueryRequestContract(prompt=prompt, user_id=resolved_user)
         result = asyncio.run(facade.ask(request))
+
+        if cache_ttl:
+            try:
+                from src.domains.retention.operations.query_artifact_manager import QueryArtifactManager
+                QueryArtifactManager().register_ai_cache_entry(
+                    project_id=None,
+                    prompt=prompt,
+                    response_text=result.response,
+                    explicit_ttl_expression=cache_ttl,
+                )
+            except Exception as ce:
+                logger.debug(f"AI cache TTL artifact registration notice: {ce}")
 
         if json_mode:
             print(result.model_dump_json(indent=2))

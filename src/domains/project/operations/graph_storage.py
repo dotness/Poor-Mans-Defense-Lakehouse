@@ -62,7 +62,12 @@ class ProjectGraphStorage:
         return nodes_imported, edges_imported
 
     def query_project_graph(self, project_id: str, cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Executes a Cypher query scoped with project_id parameter."""
+        """Executes a Cypher query scoped with project_id parameter and filters out expired/SOFT_DELETED datasets."""
         params = parameters.copy() if parameters else {}
         params["project_id"] = project_id
-        return self.client.execute_query(cypher, params)
+        records = self.client.execute_query(cypher, params)
+        try:
+            from src.domains.retention.operations.query_interceptor import QueryTTLInterceptor
+            return QueryTTLInterceptor().filter_graph_records(records, project_id=project_id)
+        except Exception:
+            return records
