@@ -162,7 +162,7 @@
         "src/domains/*/api/router.py"
       ],
       healthAndOpsCmd: "$ make api  # Starts uvicorn src.api:app --port 8000\n$ curl -s http://127.0.0.1:8000/health",
-      composeOrSpecSnippet: "app = FastAPI(\n    title=\"Artemis Unified Domain Gateway\",\n    version=\"0.2.0\",\n    lifespan=lifespan,\n    dependencies=[Depends(authenticate_user)],\n)\n# Mounts auth, analytics, ai, ingestion, graph, pipeline, project, discovery",
+      composeOrSpecSnippet: "app = FastAPI(\n    title=\"Artemis Unified Domain Gateway\",\n    version=\"0.3.0\",\n    lifespan=lifespan,\n    dependencies=[Depends(authenticate_user)],\n)\n# Mounts auth, analytics, ai, ingestion, graph, pipeline, project, discovery",
       detailedRole: "Central hexagonal transport layer hosting all 8 domain facades (auth, ingestion, analytics, graph, ai, pipeline, project, discovery). Enforces JWT authentication, propagates caller identity via ContextVar for zero-trust KDG confinement, and coordinates across all Docker bridge services."
     },
     {

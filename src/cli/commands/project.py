@@ -254,9 +254,11 @@ def project_pipeline_group():
 @click.option("--stage", default="BRONZE_TO_SILVER", help="Stage: INGESTION, BRONZE_TO_SILVER, SILVER_TO_GOLD, CUSTOM")
 @click.option("--script", "script_path", required=True, type=click.Path(exists=True), help="Path to Python script file")
 @click.option("--image", default="artemis-pipeline-runner:latest", help="Docker runner container image")
+@click.option("--default-cpu", "default_cpu_limit", default=None, type=float, help="Optional pipeline default CPU cores (e.g. 1.5)")
+@click.option("--default-memory", "default_memory_limit", default=None, type=str, help="Optional pipeline default memory limit (e.g. '1g', '512m')")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def pipeline_create_cmd(ctx, project_id, name, desc, stage, script_path, image, json_mode):
+def pipeline_create_cmd(ctx, project_id, name, desc, stage, script_path, image, default_cpu_limit, default_memory_limit, json_mode):
     """Create and upload a shareable pipeline with a Python transformation script."""
     is_json = json_mode or ctx.obj.get("JSON_MODE", False) if ctx.obj else json_mode
     try:
@@ -267,13 +269,18 @@ def pipeline_create_cmd(ctx, project_id, name, desc, stage, script_path, image, 
             stage=stage,
             script_content=script_content,
             docker_image=image,
+            default_cpu_limit=default_cpu_limit,
+            default_memory_limit=default_memory_limit,
         )
         res = run_async(pipeline_facade.create_project_pipeline(project_id, contract))
         if is_json:
             click.echo(res.model_dump_json(indent=2))
         else:
             click.echo(f"Created pipeline '{res.name}' (ID: {res.pipeline_id}) for project {res.project_id}.")
-            click.echo(f"Stage: {res.stage} | Version: {res.version}")
+            extra_res = ""
+            if res.default_cpu_limit is not None or res.default_memory_limit is not None:
+                extra_res = f" | Default CPU: {res.default_cpu_limit or 'system'} | Default Memory: {res.default_memory_limit or 'system'}"
+            click.echo(f"Stage: {res.stage} | Version: {res.version}{extra_res}")
         sys.exit(0)
     except Exception as e:
         if is_json:
@@ -331,6 +338,9 @@ def pipeline_get_cmd(ctx, project_id, identifier, json_mode):
             click.echo(f"Pipeline: {p.name} ({p.pipeline_id})")
             click.echo(f"Stage: {p.stage} | Version: {p.version} | Author: {p.created_by}")
             click.echo(f"Docker Image: {p.docker_image}")
+            cpu_disp = f"{p.default_cpu_limit} cores" if p.default_cpu_limit is not None else "system default"
+            mem_disp = p.default_memory_limit if p.default_memory_limit is not None else "system default"
+            click.echo(f"Default Resources: CPU={cpu_disp}, Memory={mem_disp}")
             if p.description:
                 click.echo(f"Description: {p.description}")
         sys.exit(0)
@@ -348,9 +358,11 @@ def pipeline_get_cmd(ctx, project_id, identifier, json_mode):
 @click.option("--script", "script_path", default=None, type=click.Path(exists=True), help="Path to new Python script")
 @click.option("--name", default=None, help="Updated pipeline name")
 @click.option("--stage", default=None, help="Updated stage")
+@click.option("--default-cpu", "default_cpu_limit", default=None, type=float, help="Updated pipeline default CPU cores")
+@click.option("--default-memory", "default_memory_limit", default=None, type=str, help="Updated pipeline default memory limit")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def pipeline_update_cmd(ctx, project_id, identifier, script_path, name, stage, json_mode):
+def pipeline_update_cmd(ctx, project_id, identifier, script_path, name, stage, default_cpu_limit, default_memory_limit, json_mode):
     """Update pipeline configuration or script with atomic version increment."""
     is_json = json_mode or ctx.obj.get("JSON_MODE", False) if ctx.obj else json_mode
     try:
@@ -359,6 +371,8 @@ def pipeline_update_cmd(ctx, project_id, identifier, script_path, name, stage, j
             name=name,
             stage=stage,
             script_content=script_content,
+            default_cpu_limit=default_cpu_limit,
+            default_memory_limit=default_memory_limit,
         )
         res = run_async(pipeline_facade.update_project_pipeline(project_id, identifier, contract))
         if is_json:
@@ -410,9 +424,11 @@ def pipeline_delete_cmd(ctx, project_id, identifier, json_mode):
 @click.option("--target-dataset", required=True, help="Target destination dataset identifier")
 @click.option("--target-tier", default="silver", help="Target medallion tier: bronze, silver, gold")
 @click.option("--timeout", default=300, type=int, help="Execution timeout in seconds")
+@click.option("--cpu", "cpu_limit", default=None, type=float, help="Optional per-run CPU allocation in cores (e.g. 0.5, 2.5)")
+@click.option("--memory", "memory_limit", default=None, type=str, help="Optional per-run memory limit (e.g. '512m', '2g')")
 @click.option("--json", "json_mode", is_flag=True, default=False, help="Output results formatted as JSON")
 @click.pass_context
-def pipeline_run_cmd(ctx, project_id, identifier, input_datasets, target_dataset, target_tier, timeout, json_mode):
+def pipeline_run_cmd(ctx, project_id, identifier, input_datasets, target_dataset, target_tier, timeout, cpu_limit, memory_limit, json_mode):
     """Trigger an ephemeral Docker-sandboxed execution of a project pipeline."""
     is_json = json_mode or ctx.obj.get("JSON_MODE", False) if ctx.obj else json_mode
     try:
@@ -421,20 +437,34 @@ def pipeline_run_cmd(ctx, project_id, identifier, input_datasets, target_dataset
             target_dataset=target_dataset,
             target_tier=target_tier,
             timeout_seconds=timeout,
+            cpu_limit=cpu_limit,
+            memory_limit=memory_limit,
         )
         res = run_async(pipeline_facade.trigger_pipeline_run(project_id, identifier, contract))
         if is_json:
             click.echo(res.model_dump_json(indent=2))
+            if res.status != "SUCCESS":
+                sys.exit(1)
         else:
+            clamp_suffix = " (CLAMPED)" if res.resource_clamped else ""
+            res_summary = (
+                f"Resources Applied: CPU={res.effective_cpu_limit} cores, "
+                f"Memory={res.effective_memory_limit}{clamp_suffix}"
+            )
             if res.status == "SUCCESS":
                 click.echo("Pipeline run completed successfully:")
                 click.echo(f"Status: {res.status}")
                 click.echo(f"Run ID: {res.run_id}")
                 click.echo(f"Records Processed: {res.records_processed}")
                 click.echo(f"Execution Time: {res.duration_ms}ms (Exit Code: {res.exit_code})")
+                click.echo(res_summary)
                 click.echo(f"Target Dataset: {res.target_dataset} (Tier: {res.target_tier})")
             else:
                 click.echo(f"Pipeline run {res.status} (Exit Code: {res.exit_code}):", err=True)
+                click.echo(res_summary, err=True)
+                err_detail = (res.details or {}).get("error") if isinstance(res.details, dict) else None
+                if err_detail:
+                    click.echo(f"Error: {err_detail}", err=True)
                 if res.logs:
                     click.echo(f"Logs:\n{res.logs}", err=True)
                 sys.exit(1)
@@ -470,13 +500,21 @@ def pipeline_runs_cmd(ctx, project_id, pipeline_id, json_mode):
                     r.status,
                     r.target_dataset,
                     r.records_processed,
+                    r.effective_cpu_limit if r.effective_cpu_limit is not None else "-",
+                    r.effective_memory_limit if r.effective_memory_limit is not None else "-",
                     f"{r.duration_ms}ms",
                     r.exit_code,
                     r.started_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(r.started_at, "strftime") else str(r.started_at),
                 ]
                 for r in runs
             ]
-            click.echo(tabulate(rows, headers=["RUN_ID", "PIPE_ID", "STATUS", "TARGET", "RECORDS", "TIME", "EXIT", "STARTED"], tablefmt="simple"))
+            click.echo(
+                tabulate(
+                    rows,
+                    headers=["RUN_ID", "PIPE_ID", "STATUS", "TARGET", "RECORDS", "CPU", "MEMORY", "TIME", "EXIT", "STARTED"],
+                    tablefmt="simple",
+                )
+            )
         sys.exit(0)
     except Exception as e:
         if is_json:

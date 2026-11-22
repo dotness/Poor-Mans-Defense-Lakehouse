@@ -27,6 +27,9 @@ class DockerRunnerResult:
     container_id: Optional[str] = None
     success: bool = True
     error_message: Optional[str] = None
+    oom_killed: bool = False
+    effective_cpu_limit: Optional[float] = None
+    effective_memory_limit: Optional[str] = None
 
 
 class DockerPipelineRunner:
@@ -67,6 +70,8 @@ class DockerPipelineRunner:
         image: Optional[str] = None,
         timeout_seconds: Optional[int] = None,
         environment: Optional[Dict[str, str]] = None,
+        cpu_limit: Optional[float] = None,
+        memory_limit: Optional[str] = None,
     ) -> DockerRunnerResult:
         """
         Executes a script inside an ephemeral Docker container.
@@ -75,6 +80,9 @@ class DockerPipelineRunner:
         """
         image_tag = image or self.default_image
         timeout = timeout_seconds or settings.docker_run_timeout
+        effective_cpu = float(cpu_limit if cpu_limit is not None else settings.docker_runner_cpu_limit)
+        effective_mem = str(memory_limit if memory_limit is not None else settings.docker_runner_memory_limit)
+
         run_id = f"run_{uuid.uuid4().hex[:12]}"
         run_workspace = self.workspace_base / run_id
         run_workspace.mkdir(parents=True, exist_ok=True)
@@ -102,8 +110,8 @@ class DockerPipelineRunner:
                 environment=container_env,
                 working_dir="/workspace",
                 network_mode="none",
-                mem_limit=settings.docker_runner_memory_limit,
-                nano_cpus=int(settings.docker_runner_cpu_limit * 1e9),
+                mem_limit=effective_mem,
+                nano_cpus=int(round(effective_cpu * 1e9)),
                 detach=True,
                 remove=False,
                 name=f"artemis-runner-{run_id}",
@@ -113,8 +121,40 @@ class DockerPipelineRunner:
             result = container.wait(timeout=timeout)
             duration_ms = int((time.monotonic() - start_time) * 1000)
 
-            exit_code = result.get("StatusCode", 1)
-            logs = container.logs(stdout=True, stderr=True).decode("utf-8", errors="replace")
+            exit_code = int(result.get("StatusCode", 1))
+            raw_logs = container.logs(stdout=True, stderr=True)
+            logs = raw_logs.decode("utf-8", errors="replace") if isinstance(raw_logs, (bytes, bytearray)) else str(raw_logs)
+
+            oom_killed = (exit_code == 137)
+            try:
+                if hasattr(container, "reload"):
+                    container.reload()
+                attrs = getattr(container, "attrs", None)
+                if isinstance(attrs, dict) and attrs.get("State", {}).get("OOMKilled") is True:
+                    oom_killed = True
+                    if exit_code == 0:
+                        exit_code = 137
+            except Exception:
+                pass
+
+            if oom_killed:
+                oom_msg = (
+                    f"Out of Memory (OOM): Container killed (exit code {exit_code}) "
+                    f"after exceeding effective memory limit of {effective_mem}."
+                )
+                if oom_msg not in logs:
+                    logs = f"{logs.rstrip()}\n{oom_msg}".strip() if logs else oom_msg
+                return DockerRunnerResult(
+                    exit_code=exit_code,
+                    logs=logs,
+                    duration_ms=duration_ms,
+                    container_id=container.id,
+                    success=False,
+                    error_message=oom_msg,
+                    oom_killed=True,
+                    effective_cpu_limit=effective_cpu,
+                    effective_memory_limit=effective_mem,
+                )
 
             success = (exit_code == 0)
             return DockerRunnerResult(
@@ -124,18 +164,33 @@ class DockerPipelineRunner:
                 container_id=container.id,
                 success=success,
                 error_message=None if success else f"Script exited with status {exit_code}",
+                oom_killed=False,
+                effective_cpu_limit=effective_cpu,
+                effective_memory_limit=effective_mem,
             )
 
         except docker.errors.ContainerError as e:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             logs = e.stderr.decode("utf-8", errors="replace") if hasattr(e, "stderr") and e.stderr else str(e)
+            exit_status = int(getattr(e, "exit_status", 1))
+            oom_killed = (exit_status == 137)
+            if oom_killed:
+                err_msg = (
+                    f"Out of Memory (OOM): Container killed (exit code {exit_status}) "
+                    f"after exceeding effective memory limit of {effective_mem}."
+                )
+            else:
+                err_msg = f"Container execution failed: {e}"
             return DockerRunnerResult(
-                exit_code=e.exit_status,
+                exit_code=exit_status,
                 logs=logs,
                 duration_ms=duration_ms,
-                container_id=e.container.id if hasattr(e, "container") else None,
+                container_id=e.container.id if hasattr(e, "container") and e.container else None,
                 success=False,
-                error_message=f"Container execution failed: {e}",
+                error_message=err_msg,
+                oom_killed=oom_killed,
+                effective_cpu_limit=effective_cpu,
+                effective_memory_limit=effective_mem,
             )
 
         except Exception as e:
@@ -149,6 +204,9 @@ class DockerPipelineRunner:
                 container_id=container.id if container else None,
                 success=False,
                 error_message=f"Timeout after {timeout}s" if is_timeout else str(e),
+                oom_killed=False,
+                effective_cpu_limit=effective_cpu,
+                effective_memory_limit=effective_mem,
             )
 
         finally:

@@ -73,7 +73,7 @@ async def trigger_pipeline_run(project_id: str, pipeline_id: str, payload: Pipel
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error triggering pipeline run: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to trigger pipeline run.")
 
 
 @router.get("/{pipeline_id}/runs", response_model=List[PipelineRunResponseContract])

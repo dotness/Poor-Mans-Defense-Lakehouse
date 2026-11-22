@@ -256,5 +256,5 @@ make clean
 
 ## 📄 License & Versioning
 
-- **Version**: `0.2.0` (see [VERSION](VERSION))
+- **Version**: `0.3.0` (see [VERSION](VERSION))
 - **Specification**: [specs/001-simplified-artemis/](specs/001-simplified-artemis/)

@@ -95,7 +95,7 @@ The FastAPI gateway ([`src/api.py`](src/api.py)) mounts 10 routers across the 9 
 
 | Domain / Tag | Method & Path | Handler / Description |
 | :--- | :--- | :--- |
-| **System** | `GET /health` | Gateway readiness and version check (`0.2.0`). |
+| **System** | `GET /health` | Gateway readiness and version check (`0.3.0`). |
 | **Auth** | `POST /api/v1/auth/token` | Authenticate credentials and issue signed HS256 JWT Bearer token. |
 | **Ingestion** | `POST /api/v1/ingestion/event` | Ingest a single validated `TelemetryEvent` into the disk buffer. |
 | **Ingestion** | `POST /api/v1/ingestion/flush` | Trigger atomic buffer rotation and Parquet flush to MinIO. |

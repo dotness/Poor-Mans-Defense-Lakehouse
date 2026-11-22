@@ -57,7 +57,7 @@
       connectedTo: ["dom_auth", "dom_ingestion", "dom_analytics", "dom_graph", "dom_ai", "dom_pipeline", "dom_project", "dom_discovery"],
       summary: "Unified hexagonal transport gateway mounting 9 domain routers (34 endpoints), enforcing JWT Bearer authentication, ContextVar user propagation, and optional Langfuse OpenTelemetry tracing.",
       cliOrApi: "make api -> uvicorn src.api:app --port 8000",
-      codeSnippet: "app = FastAPI(\n    title=\"Artemis Unified Domain Gateway\",\n    version=\"0.2.0\",\n    lifespan=lifespan,\n    dependencies=[Depends(authenticate_user)],\n)\n# Mounts auth, analytics, ai, ingestion, graph, pipeline, project, discovery"
+      codeSnippet: "app = FastAPI(\n    title=\"Artemis Unified Domain Gateway\",\n    version=\"0.3.0\",\n    lifespan=lifespan,\n    dependencies=[Depends(authenticate_user)],\n)\n# Mounts auth, analytics, ai, ingestion, graph, pipeline, project, discovery"
     },
     {
       id: "cli",
@@ -439,7 +439,7 @@
   ];
 
   var API_CATALOG = [
-    ["System", "GET /health", "artemis status", "Public", "Gateway health & version (0.2.0)"],
+    ["System", "GET /health", "artemis status", "Public", "Gateway health & version (0.3.0)"],
     ["auth", "POST /api/v1/auth/token", "artemis login / whoami", "Public (Issues JWT)", "TokenResponseContract (~/.artemis/token)"],
     ["ingestion", "POST /api/v1/ingestion/event", "tools/simulate_telemetry.py", "JWT Bearer", "Append validated TelemetryEvent to disk buffer"],
     ["ingestion", "POST /api/v1/ingestion/flush", "artemis pipeline run mqtt_to_minio", "JWT Bearer", "Atomic buffer rotation & Snappy Parquet upload"],

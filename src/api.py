@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="Artemis Unified Domain Gateway",
-    version="0.2.0",
+    version="0.3.0",
     description="Domain-Driven Architecture aligned with uservice-template",
     lifespan=lifespan,
     dependencies=[Depends(authenticate_user)],
@@ -108,4 +108,4 @@ app.include_router(retention_router)
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "HEALTHY", "version": "0.2.0", "service": "artemis-gateway"}
+    return {"status": "HEALTHY", "version": "0.3.0", "service": "artemis-gateway"}

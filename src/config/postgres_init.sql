@@ -66,12 +66,18 @@ CREATE TABLE IF NOT EXISTS project_pipelines (
     stage VARCHAR(32) NOT NULL DEFAULT 'BRONZE_TO_SILVER',
     script_content TEXT NOT NULL,
     docker_image VARCHAR(128) NOT NULL DEFAULT 'artemis-pipeline-runner:latest',
+    default_cpu_limit DOUBLE PRECISION,
+    default_memory_limit VARCHAR(32),
     version INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(64) NOT NULL DEFAULT 'admin',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_project_pipeline_name UNIQUE (project_id, name)
 );
+
+ALTER TABLE project_pipelines
+    ADD COLUMN IF NOT EXISTS default_cpu_limit DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS default_memory_limit VARCHAR(32);
 
 CREATE TABLE IF NOT EXISTS project_pipeline_runs (
     run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
